@@ -49,4 +49,15 @@ if [[ "$#" -eq 0 ]]; then
 fi
 
 cd "${project_root}"
+
+# GitHub's Contents API stores shell scripts as non-executable files. When this
+# helper is asked to resume a shell script, explicitly invoke Bash instead of
+# relying on the executable bit. Other commands (eslint, drizzle-kit, etc.)
+# continue to run unchanged.
+if [[ "$1" == *.sh ]]; then
+  script="$1"
+  shift
+  exec bash "${script}" "$@"
+fi
+
 exec "$@"
