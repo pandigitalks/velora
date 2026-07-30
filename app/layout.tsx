@@ -25,6 +25,11 @@ export const metadata: Metadata = {
   },
 };
 
+// The marketplace reads navigation query parameters on the client (filters,
+// search and post-login redirects), so render routes on request rather than
+// attempting static prerendering.
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({
   children,
 }: Readonly<{
