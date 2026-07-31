@@ -2645,6 +2645,23 @@ function ExplorePage({
               {categoryLabel(c)}
             </button>
           ))}
+          {department !== "all" && (
+            <select
+              className="v2-category-select"
+              value={category}
+              onChange={(event) => setParam("category", event.target.value)}
+              aria-label="Zgjidh nënkategorinë"
+            >
+              <option value="all">Të gjitha nënkategoritë</option>
+              {findCategory(department)?.children?.map((group) => (
+                <optgroup key={group.slug} label={group.nameSq}>
+                  {group.children?.map((item) => (
+                    <option key={item.slug} value={item.slug}>{item.nameSq}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          )}
         </div>
         <div>
           <button
