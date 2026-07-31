@@ -114,6 +114,8 @@ type Order = {
   items: ProductId[];
   date: string;
   status: string;
+  shippingMethod?: string;
+  trackingNumber?: string;
 };
 type ChatMessage = { mine: boolean; text: string; time: string };
 type Lang = "sq" | "en";
@@ -3071,6 +3073,9 @@ function ListingPage({
   const [sent, setSent] = useState(false);
   const [question, setQuestion] = useState("");
   const [report, setReport] = useState(false);
+  const [flagging, setFlagging] = useState(false);
+  const [reportReason, setReportReason] = useState("counterfeit");
+  const [reportDetails, setReportDetails] = useState("");
   const [gallery, setGallery] = useState(0);
   const [zoom, setZoom] = useState(false);
   const [notice, setNotice] = useState("");
@@ -3138,9 +3143,7 @@ function ListingPage({
           </button>
           <button
             onClick={() =>
-              setNotice(
-                "Raporti u hap. Ekipi CLOZER do ta shqyrtojë këtë shpallje.",
-              )
+              signedIn ? setFlagging(true) : requestAccount(`/listing/${p.id}`)
             }
           >
             <Flag />
@@ -3637,6 +3640,52 @@ function ListingPage({
                 </>
               )}
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {flagging && (
+          <motion.div className="v2-modal-bg" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setFlagging(false)}>
+            <motion.form
+              className="v2-report-listing"
+              initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 24 }}
+              onClick={(event) => event.stopPropagation()}
+              onSubmit={async (event) => {
+                event.preventDefault();
+                try {
+                  const supabase = createClient();
+                  const { data: { user } } = await supabase.auth.getUser();
+                  if (user && typeof p.id === "string" && /^[0-9a-f-]{36}$/i.test(p.id)) {
+                    const { error } = await supabase.from("listing_reports").insert({ listing_id: p.id, reporter_id: user.id, reason: reportReason, details: reportDetails.trim() });
+                    if (error) throw error;
+                  }
+                  setFlagging(false);
+                  setNotice("Raporti u dërgua në ekipin e sigurisë CLOZER.");
+                } catch {
+                  setNotice("Raporti nuk u dërgua. Provo përsëri.");
+                }
+              }}
+            >
+              <button type="button" className="v2-icon close" onClick={() => setFlagging(false)} aria-label="Mbyll"><X /></button>
+              <span>BESIMI DHE SIGURIA</span>
+              <h2>Raporto këtë produkt</h2>
+              <p>Raporti është konfidencial. Shitësi nuk e sheh identitetin tënd.</p>
+              <label>Arsyeja
+                <select value={reportReason} onChange={(event) => setReportReason(event.target.value)}>
+                  <option value="counterfeit">Dyshim për falsifikim</option>
+                  <option value="misleading">Përshkrim ose foto mashtruese</option>
+                  <option value="prohibited">Produkt i ndaluar</option>
+                  <option value="stolen">Dyshim për produkt të vjedhur</option>
+                  <option value="spam">Spam ose shpallje e përsëritur</option>
+                  <option value="other">Tjetër</option>
+                </select>
+              </label>
+              <label>Detaje shtesë
+                <textarea value={reportDetails} onChange={(event) => setReportDetails(event.target.value)} maxLength={2000} placeholder="Na trego çfarë vure re…" />
+              </label>
+              <div className="v2-report-assurance"><ShieldCheck /><span><b>Shqyrtim nga ekipi CLOZER</b><small>Produktet me rrezik mund të pezullohen menjëherë.</small></span></div>
+              <button className="v2-pill dark wide" type="submit">Dërgo raportin <Flag /></button>
+            </motion.form>
           </motion.div>
         )}
       </AnimatePresence>
@@ -5015,11 +5064,18 @@ function CheckoutPage({
   catalog,
 }: {
   cart: CartLine[];
-  place: (address: string) => void;
+  place: (address: string, shippingMethod: string, shippingCost: number) => void;
   catalog: Product[];
 }) {
   const [done, setDone] = useState(false);
   const [address, setAddress] = useState("");
+  const [shippingMethod, setShippingMethod] = useState("courier_standard");
+  const shippingOptions = [
+    { id: "courier_standard", title: "Korrier standard", detail: "2–4 ditë pune · me tracking", price: 3.9 },
+    { id: "courier_express", title: "Korrier express", detail: "Brenda 24 orëve · me tracking", price: 5.9 },
+    { id: "personal_pickup", title: "Marrje personale", detail: "Dakordohu në chat · pa transport", price: 0 },
+  ];
+  const shippingCost = shippingOptions.find((option) => option.id === shippingMethod)?.price || 0;
   const total = cart.reduce(
     (sum, line) =>
       sum +
@@ -5099,7 +5155,16 @@ function CheckoutPage({
               </select>
             </label>
           </div>
-          <h2>2. Payment</h2>
+          <h2>2. Transporti</h2>
+          <div className="v2-shipping-options">
+            {shippingOptions.map((option) => (
+              <label key={option.id} className={shippingMethod === option.id ? "active" : ""}>
+                <input type="radio" name="shipping" value={option.id} checked={shippingMethod === option.id} onChange={() => setShippingMethod(option.id)} />
+                <Package /><span><b>{option.title}</b><small>{option.detail}</small></span><strong>{option.price ? `€${option.price.toFixed(2)}` : "Falas"}</strong>
+              </label>
+            ))}
+          </div>
+          <h2>3. Payment</h2>
           <div className="v2-payment">
             <label>
               <input type="radio" name="pay" defaultChecked />
@@ -5132,25 +5197,25 @@ function CheckoutPage({
           </p>
           <p>
             <span>Shipping</span>
-            <b>€14.90</b>
+            <b>{shippingCost ? `€${shippingCost.toFixed(2)}` : "Falas"}</b>
           </p>
           <hr />
           <p className="total">
             <span>Total</span>
-            <b>€{(total + 14.9).toLocaleString()}</b>
+            <b>€{(total + shippingCost).toLocaleString()}</b>
           </p>
           <button
             disabled={!address.trim()}
             className="v2-pill dark wide"
             onClick={() => {
-              place(address);
+              place(address, shippingMethod, shippingCost);
               setDone(true);
             }}
           >
             Place protected order
             <LockKeyhole />
           </button>
-          <small>This is a demo checkout. No real charge is made.</small>
+          <small>Pagesa mbahet e mbrojtur deri në konfirmimin e dorëzimit.</small>
         </aside>
       </div>
     </main>
@@ -5631,6 +5696,8 @@ function Dashboard({ listings }: { listings: ListingDraft[] }) {
   const [tab, setTab] = useState("Përmbledhje");
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<SellerItem | null>(null);
+  const [boosting, setBoosting] = useState<SellerItem | null>(null);
+  const [boostedIds, setBoostedIds] = usePersistent<ProductId[]>("clozer-boosted-listings", []);
   const [notice, setNotice] = useState("");
   const merged = useMemo(
     () => [
@@ -5785,6 +5852,10 @@ function Dashboard({ listings }: { listings: ListingDraft[] }) {
                   </b>
                 </span>
                 <div className="v2-inventory-actions">
+                  <button className="boost" onClick={() => setBoosting(x)}>
+                    <TrendingUp />
+                    {boostedIds.includes(x.id) ? "Boost aktiv" : "Boost"}
+                  </button>
                   <button onClick={() => setEditing({ ...x })}>
                     <Pencil />
                     Ndrysho
@@ -5907,6 +5978,38 @@ function Dashboard({ listings }: { listings: ListingDraft[] }) {
         </section>
       )}
       <AnimatePresence>
+        {boosting && (
+          <motion.div className="v2-modal-bg" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setBoosting(null)}>
+            <motion.div className="v2-boost-modal" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 24 }} onClick={(event) => event.stopPropagation()}>
+              <button className="v2-icon close" onClick={() => setBoosting(null)} aria-label="Mbyll"><X /></button>
+              <span>CLOZER BOOST</span><h2>Jepi më shumë shikime.</h2><p>{boosting.title}</p>
+              <div className="v2-boost-plans">
+                {[
+                  ["top_24h", "Në krye · 24 orë", "Shfaqet para produkteve normale", "1.99"],
+                  ["urgent_3d", "Urgjente · 3 ditë", "Badge Urgjente dhe prioritet në kërkim", "3.99"],
+                  ["homepage_7d", "Homepage · 7 ditë", "Pozicion premium në ballinë", "7.99"],
+                ].map((plan) => (
+                  <button key={plan[0]} onClick={async () => {
+                    try {
+                      const supabase = createClient();
+                      const { data: { user } } = await supabase.auth.getUser();
+                      if (user && typeof boosting.id === "string" && /^[0-9a-f-]{36}$/i.test(boosting.id)) {
+                        const { error } = await supabase.from("listing_boosts").insert({ listing_id: boosting.id, seller_id: user.id, tier: plan[0], amount: Number(plan[3]), status: "pending" });
+                        if (error) throw error;
+                      }
+                      setBoostedIds([...new Set([...boostedIds, boosting.id])]); setBoosting(null); setNotice("Boost-i u aktivizua për shpalljen.");
+                    } catch { setNotice("Boost-i nuk u aktivizua. Provo përsëri."); }
+                  }}>
+                    <span><b>{plan[1]}</b><small>{plan[2]}</small></span><strong>€{plan[3]}</strong><ChevronRight />
+                  </button>
+                ))}
+              </div>
+              <small>Pagesa finale do të lidhet me checkout-in CLOZER.</small>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
         {editing && (
           <motion.div
             className="v2-modal-bg"
@@ -6026,7 +6129,13 @@ function OrdersPage({ orders }: { orders: Order[] }) {
               </div>
               <em>{o.status}</em>
               <strong>€{o.total.toLocaleString()}</strong>
-              <button className="v2-pill soft">Track order</button>
+              <button className="v2-pill soft">Gjurmo porosinë</button>
+              <div className="v2-order-tracking">
+                {["E konfirmuar", "Po përgatitet", "Në transport", "Dorëzuar"].map((step, index) => (
+                  <span key={step} className={index < 2 ? "done" : ""}><i>{index < 2 ? <Check /> : index + 1}</i><small>{step}</small></span>
+                ))}
+                <p><Package /><span><b>{o.shippingMethod === "personal_pickup" ? "Marrje personale" : "Korrier me tracking"}</b><small>{o.trackingNumber || "Tracking krijohet sapo shitësi ta dorëzojë paketën."}</small></span></p>
+              </div>
             </article>
           ))}
         </div>
@@ -7431,7 +7540,7 @@ export default function Marketplace() {
     );
     router.push("/checkout");
   }, [signedIn, router, setCart]);
-  const place = () => {
+  const place = (_address: string, shippingMethod: string, shippingCost: number) => {
     const total = cart.reduce(
       (sum, line) =>
         (listingCatalog.find(
@@ -7444,10 +7553,12 @@ export default function Marketplace() {
     setOrders([
       {
         id: `VL-${9000 + orders.length}`,
-        total,
+        total: total + shippingCost,
         items: cart.map((item) => item.id),
         date: new Date().toLocaleDateString("sq-AL"),
         status: "Porosia u konfirmua",
+        shippingMethod,
+        trackingNumber: shippingMethod === "personal_pickup" ? "Takimi caktohet në chat" : undefined,
       },
       ...orders,
     ]);
