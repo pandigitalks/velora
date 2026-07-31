@@ -87,7 +87,7 @@ export async function getPublicListings(): Promise<PublicListing[]> {
 
   return ((data ?? []) as unknown as PublicListingRow[]).map((row) => {
     const sellerName =
-      row.seller?.full_name || row.seller?.username || "Shitës VELORA";
+      row.seller?.full_name || row.seller?.username || "Shitës CLOZER";
     const images = [...(row.listing_images ?? [])]
       .sort((a, b) => a.sort_order - b.sort_order)
       .map(
