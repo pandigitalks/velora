@@ -3946,19 +3946,19 @@
   }
   .v2-hero-video {
     width: 100%;
-    height: 235px;
+    height: 100%;
     aspect-ratio: auto;
     object-fit: cover;
-    object-position: center;
+    object-position: 50% center;
     background: #eef1f1;
   }
   .v2-hero-overlay {
     background: linear-gradient(
       0deg,
-      #1b1b19 0%,
-      rgba(27, 27, 25, 0.98) 40%,
-      rgba(27, 27, 25, 0.3) 61%,
-      transparent 76%
+      rgba(12, 12, 11, 0.78) 0%,
+      rgba(12, 12, 11, 0.5) 42%,
+      rgba(12, 12, 11, 0.08) 76%,
+      transparent 100%
     );
   }
 
