@@ -500,6 +500,15 @@
 .v2-product-media > span svg {
   width: 12px;
 }
+.v2-product-media > .v2-boost-badge {
+  z-index: 3;
+  left: auto;
+  right: 11px;
+  top: 11px;
+  background: #dfff73;
+  color: #1b2712;
+  box-shadow: 0 5px 15px rgba(34, 44, 19, 0.12);
+}
 .v2-product-media > i {
   position: absolute;
   bottom: 11px;
@@ -6746,6 +6755,9 @@
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
 }
+.v2-home-boost { padding-top: 72px; }
+.v2-boost-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; padding:16px; border-radius:20px; background:linear-gradient(135deg,#f3f6e8,#faf9f5 55%,#f0eee8); }
+.v2-boost-note { margin:12px 2px 0; display:flex; align-items:center; gap:6px; color:#777; font-size:9px; }.v2-boost-note svg { width:13px; color:#486326; }
 .v2-card-value {
   position: absolute;
   left: 10px;
@@ -6798,6 +6810,9 @@
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
   }
+  .v2-home-boost { padding-top:52px; }
+  .v2-boost-grid { display:flex; overflow:auto; margin-right:-15px; padding:11px; gap:9px; border-radius:16px 0 0 16px; scroll-snap-type:x mandatory; scrollbar-width:none; }
+  .v2-boost-grid .v2-product { min-width:72vw; scroll-snap-align:start; }
   .v2-curated-grid .v2-product {
     min-width: 72vw;
   }
