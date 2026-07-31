@@ -3944,14 +3944,51 @@
     min-height: 540px;
   }
   .v2-hero-video {
-    object-position: 58% center;
+    object-fit: contain;
+    object-position: center;
+    background: #eef1f1;
   }
   .v2-hero-overlay {
     background: linear-gradient(
       0deg,
       rgba(0, 0, 0, 0.8),
-      rgba(0, 0, 0, 0.12) 78%
+      rgba(0, 0, 0, 0.08) 72%,
+      transparent
     );
+  }
+
+  .v2-category-popover {
+    position: fixed;
+    z-index: 1200;
+    left: 12px;
+    right: 12px;
+    top: auto;
+    bottom: calc(82px + env(safe-area-inset-bottom));
+    width: auto;
+    max-height: min(62vh, 520px);
+    padding: 14px 10px 10px;
+    border-radius: 20px;
+    box-shadow: 0 24px 80px rgba(15, 15, 13, 0.28);
+    overscroll-behavior: contain;
+  }
+  .v2-category-popover:before {
+    content: "";
+    display: block;
+    width: 42px;
+    height: 4px;
+    margin: 0 auto 10px;
+    border-radius: 999px;
+    background: #d4d1ca;
+  }
+  .v2-category-popover button {
+    min-height: 44px;
+    height: auto;
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+  .v2-category-popover section > span {
+    padding: 10px 10px 7px;
+    font-size: 11px;
   }
   .v2-hero-copy {
     left: 20px;
