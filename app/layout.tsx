@@ -15,7 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "VELORA — Remarkable pieces. Second lives.",
-  description: "The considered marketplace for authenticated luxury, fashion, streetwear and modern collectibles.",
+  description:
+    "The considered marketplace for authenticated luxury, fashion, streetwear and modern collectibles.",
   other: {
     "codex-preview": "development",
   },
@@ -36,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="sq">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
