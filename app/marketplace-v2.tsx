@@ -7621,7 +7621,6 @@ export default function Marketplace() {
         add={add}
         listings={signedIn ? listings : []}
         signedIn={signedIn}
-        boosted={homepageBoosted}
       />
     );
   else if (path.startsWith("/listing"))
@@ -7709,6 +7708,7 @@ export default function Marketplace() {
         toggle={toggle}
         add={add}
         signedIn={signedIn}
+        boosted={homepageBoosted}
       />
     );
   if (!authReady)
