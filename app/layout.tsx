@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VELORA — Remarkable pieces. Second lives.",
+  title: "CLOZER — Remarkable pieces. Second lives.",
   description:
     "The considered marketplace for authenticated luxury, fashion, streetwear and modern collectibles.",
   other: {
