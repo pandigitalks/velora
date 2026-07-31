@@ -2,6 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -2194,8 +2195,26 @@ function HomePage({
           <aside><ShieldCheck/><span><b>E VERIFIKUAR</b><small>Kontrolluar nga ekspertët CLOZER</small></span></aside>
         </motion.div>
         <div className="v2-new-hero-art">
-          <img className="v2-new-hero-main" src="/assets/blazer-one.webp" alt="CLOZER fashion edit" />
-          <div className="v2-new-hero-card"><img src="/assets/bag-one.webp" alt="Përzgjedhje CLOZER"/><span>THE WEEKLY EDIT<br/><b>01 / 06</b></span></div>
+          <Image
+            className="v2-new-hero-main"
+            src="/assets/blazer-one.webp"
+            alt="CLOZER fashion edit"
+            fill
+            priority
+            quality={72}
+            sizes="(max-width: 700px) 100vw, 54vw"
+          />
+          <div className="v2-new-hero-card">
+            <Image
+              src="/assets/bag-one.webp"
+              alt="Përzgjedhje CLOZER"
+              width={180}
+              height={130}
+              quality={68}
+              sizes="(max-width: 700px) 140px, 180px"
+            />
+            <span>THE WEEKLY EDIT<br/><b>01 / 06</b></span>
+          </div>
         </div>
       </section>
       <section className="v2-section v2-home-boost">
