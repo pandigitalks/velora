@@ -1355,7 +1355,11 @@ function AuthModal({
       });
       setLoading(false);
       if (authError) {
-        setError("Emaili ose fjalëkalimi nuk është i saktë.");
+        setError(
+          authError.code === "email_not_confirmed"
+            ? "Emaili nuk është konfirmuar ende. Kontrollo Inbox ose Spam dhe hape lidhjen e konfirmimit."
+            : "Emaili ose fjalëkalimi nuk është i saktë.",
+        );
         return;
       }
       complete();
