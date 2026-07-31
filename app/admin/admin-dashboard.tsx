@@ -47,7 +47,7 @@ export default function AdminDashboard({ initialData, admin }: { initialData: Sn
 
   return <div className="admin-shell">
     <aside className={`admin-sidebar ${sidebar ? "is-open" : ""}`}>
-      <div className="admin-brand"><span>V</span><div>VELORA<small>COMMAND CENTER</small></div><button onClick={() => setSidebar(false)}><X size={19}/></button></div>
+      <div className="admin-brand"><span>V</span><div>CLOZER<small>COMMAND CENTER</small></div><button onClick={() => setSidebar(false)}><X size={19}/></button></div>
       <nav>
         <p>OPERACIONET</p>
         {sections.map(([id, text, Icon]) => <button key={id} className={active === id ? "active" : ""} onClick={() => { setActive(id); setSidebar(false); }}><Icon size={18}/><span>{text}</span>{id === "authenticity" && m.pending_authenticity > 0 ? <b>{m.pending_authenticity}</b> : null}</button>)}
@@ -65,7 +65,7 @@ export default function AdminDashboard({ initialData, admin }: { initialData: Sn
         <div className="top-actions"><button><Bell size={19}/><i/></button><Link href="/">Shiko faqen</Link></div>
       </header>
       <div className="admin-content">
-        <div className="page-heading"><div><p><Command size={14}/> ADMIN / {active.toUpperCase()}</p><h1>{title}</h1><span>Kontroll i plotë dhe të dhëna në kohë reale për Velora.</span></div><div className="live"><i/> LIVE <small>Përditësuar {new Date(data.generated_at).toLocaleTimeString("sq-AL", {hour:"2-digit",minute:"2-digit"})}</small></div></div>
+        <div className="page-heading"><div><p><Command size={14}/> ADMIN / {active.toUpperCase()}</p><h1>{title}</h1><span>Kontroll i plotë dhe të dhëna në kohë reale për Clozer.</span></div><div className="live"><i/> LIVE <small>Përditësuar {new Date(data.generated_at).toLocaleTimeString("sq-AL", {hour:"2-digit",minute:"2-digit"})}</small></div></div>
         {active === "overview" ? <Overview data={data} /> : <DataSection type={active} rows={rows} query={query} />}
       </div>
     </main>
