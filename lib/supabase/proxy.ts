@@ -12,6 +12,7 @@ const protectedRoutes = [
   "/notifications",
   "/settings",
   "/orders",
+  "/admin",
 ];
 
 export async function updateSession(request: NextRequest) {
