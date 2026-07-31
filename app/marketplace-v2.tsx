@@ -2220,33 +2220,35 @@ function HomePage({
           animate={{ opacity: 1, y: 0 }}
           className="v2-hero-copy"
         >
-          <h1>Gjej tënden.</h1>
+          <span>CLOZER · THE NEW EDIT</span>
+          <h1>Pjesë që<br/><i>mbeten.</i></h1>
+          <p>Një përzgjedhje e kuruar e modës së njohur, e verifikuar me kujdes dhe gati për kapitullin e radhës.</p>
           <div>
             <Link href="/explore" className="v2-pill light">
-              Shop the edit
+              Eksploro edit-in
               <ArrowRight />
             </Link>
             <Link
               href={signedIn ? "/sell" : "/?login=sell"}
               className="v2-pill glass"
             >
-              Sell a piece
+              Shit një pjesë
             </Link>
           </div>
         </motion.div>
         <div className="v2-trust">
           <ShieldCheck />
           <span>
-            <b>CLOZER AUTHENTICATED</b>
-            <small>Expert reviewed, buyer protected</small>
+            <b>VERIFIKUAR NGA CLOZER</b>
+            <small>E kontrolluar me kujdes · blerje e mbrojtur</small>
           </span>
         </div>
       </section>
       <section className="v2-section v2-home-boost">
         <div className="v2-section-head">
           <div>
-            <span>CLOZER BOOST</span>
-            <h2>Në fokus tani</h2>
+            <span>CLOZER EDIT</span>
+            <h2>Përzgjedhja e javës</h2>
           </div>
           <Link href="/explore">Shiko të gjitha <ArrowRight /></Link>
         </div>
@@ -2255,7 +2257,7 @@ function HomePage({
             <ProductCard key={p.id} p={p} saved={saved} toggle={toggle} add={add} />
           ))}
         </div>
-        <p className="v2-boost-note"><TrendingUp /> Pozicionet e promovuara shënohen gjithmonë qartë.</p>
+        <p className="v2-boost-note"><TrendingUp /> Çdo pjesë është zgjedhur për gjendjen, historinë dhe vlerën e saj.</p>
       </section>
       <section className="v2-worlds v2-section">
         <div className="v2-section-head">
