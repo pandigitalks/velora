@@ -12,6 +12,7 @@ import {
   Bell,
   Camera,
   Check,
+  ChevronDown,
   Eye,
   Pencil,
   ChevronRight,
@@ -2407,6 +2408,7 @@ function ExplorePage({
   const params = useSearchParams();
   const [filters, setFilters] = useState(false);
   const [aiSearch, setAiSearch] = useState(false);
+  const [categoryOpen, setCategoryOpen] = useState(false);
   const [aiQuery, setAiQuery] = useState("");
   const [savedSearches, setSavedSearches] = usePersistent<string[]>(
     "velora-saved-searches",
@@ -2539,7 +2541,12 @@ function ExplorePage({
     if (value === "all") next.delete("department");
     else next.set("department", value);
     router.push(`/explore${next.toString() ? `?${next}` : ""}`);
+    setCategoryOpen(false);
   };
+  const activeDepartment = department === "all" ? null : findCategory(department);
+  const activeCategoryName = activeDepartment?.children
+    ?.flatMap((group) => group.children || [])
+    .find((item) => item.slug === category)?.nameSq;
   const applyFilters = () => {
     const next = new URLSearchParams(params.toString());
     Object.entries(draft).forEach(([key, raw]) => {
@@ -2646,21 +2653,29 @@ function ExplorePage({
             </button>
           ))}
           {department !== "all" && (
-            <select
-              className="v2-category-select"
-              value={category}
-              onChange={(event) => setParam("category", event.target.value)}
-              aria-label="Zgjidh nënkategorinë"
-            >
-              <option value="all">Të gjitha nënkategoritë</option>
-              {findCategory(department)?.children?.map((group) => (
-                <optgroup key={group.slug} label={group.nameSq}>
-                  {group.children?.map((item) => (
-                    <option key={item.slug} value={item.slug}>{item.nameSq}</option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+            <div className="v2-category-picker">
+              <button type="button" className={`v2-category-trigger ${categoryOpen ? "open" : ""}`} onClick={() => setCategoryOpen((value) => !value)} aria-expanded={categoryOpen} aria-haspopup="listbox">
+                <span>{activeCategoryName || "Të gjitha nënkategoritë"}</span><ChevronDown />
+              </button>
+              <AnimatePresence>
+                {categoryOpen && (
+                  <motion.div className="v2-category-popover" role="listbox" initial={{ opacity: 0, y: -6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.98 }}>
+                    <button type="button" className={category === "all" ? "selected" : ""} onClick={() => { setParam("category", "all"); setCategoryOpen(false); }}>
+                      Të gjitha nënkategoritë {category === "all" && <Check />}
+                    </button>
+                    {activeDepartment?.children?.map((group) => (
+                      <section key={group.slug}><span>{group.nameSq}</span>
+                        {group.children?.map((item) => (
+                          <button type="button" key={item.slug} className={category === item.slug ? "selected" : ""} onClick={() => { setParam("category", item.slug); setCategoryOpen(false); }}>
+                            {item.nameSq} {category === item.slug && <Check />}
+                          </button>
+                        ))}
+                      </section>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           )}
         </div>
         <div>
