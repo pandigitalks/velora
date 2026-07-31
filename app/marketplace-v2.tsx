@@ -2196,7 +2196,7 @@ function HomePage({
   }, []);
 
   return (
-    <main className="v2-home-reframed">
+    <main>
       <section className="v2-hero">
         <video
           ref={heroVideo}
@@ -2245,8 +2245,8 @@ function HomePage({
       <section className="v2-section v2-home-boost">
         <div className="v2-section-head">
           <div>
-            <span>CLOZER EDIT</span>
-            <h2>Përzgjedhja e javës</h2>
+            <span>CLOZER BOOST</span>
+            <h2>Në fokus tani</h2>
           </div>
           <Link href="/explore">Shiko të gjitha <ArrowRight /></Link>
         </div>
@@ -2255,7 +2255,7 @@ function HomePage({
             <ProductCard key={p.id} p={p} saved={saved} toggle={toggle} add={add} />
           ))}
         </div>
-        <p className="v2-boost-note"><TrendingUp /> Çdo pjesë është zgjedhur për gjendjen, historinë dhe vlerën e saj.</p>
+        <p className="v2-boost-note"><TrendingUp /> Pozicionet e promovuara shënohen gjithmonë qartë.</p>
       </section>
       <section className="v2-worlds v2-section">
         <div className="v2-section-head">
