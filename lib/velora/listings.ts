@@ -176,8 +176,8 @@ export async function createListing(input: NewListingInput) {
       condition: input.condition,
       gender: input.gender,
       size: input.size,
-      status: "active",
-      published_at: new Date().toISOString(),
+      status: "pending_review",
+      published_at: null,
     })
     .select("id")
     .single();

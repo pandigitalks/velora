@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { createClient } from "../../lib/supabase/client";
 import {
   Activity, BadgeCheck, Bell, Boxes, ChevronDown, CircleDollarSign,
   Command, FileCheck2, Gauge, LayoutDashboard, ListFilter, Menu, MessageSquare,
@@ -30,10 +31,13 @@ const money = (value: number) => new Intl.NumberFormat("sq-AL", { style: "curren
 const date = (value?: string) => value ? new Intl.DateTimeFormat("sq-AL", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value)) : "—";
 const label = (value?: string) => (value || "—").replaceAll("_", " ");
 
-export default function AdminDashboard({ initialData, admin }: { initialData: Snapshot; admin: Row }) {
+export default function AdminDashboard({ initialData, initialModerationQueue, admin }: { initialData: Snapshot; initialModerationQueue: Row[]; admin: Row }) {
   const [active, setActive] = useState("overview");
   const [query, setQuery] = useState("");
   const [sidebar, setSidebar] = useState(false);
+  const [moderationQueue, setModerationQueue] = useState(initialModerationQueue);
+  const [moderating, setModerating] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
   const data = initialData;
   const m = data.metrics || {};
   const title = sections.find(([id]) => id === active)?.[1] || "Pasqyra";
@@ -50,7 +54,7 @@ export default function AdminDashboard({ initialData, admin }: { initialData: Sn
       <div className="admin-brand"><span>V</span><div>CLOZER<small>COMMAND CENTER</small></div><button onClick={() => setSidebar(false)}><X size={19}/></button></div>
       <nav>
         <p>OPERACIONET</p>
-        {sections.map(([id, text, Icon]) => <button key={id} className={active === id ? "active" : ""} onClick={() => { setActive(id); setSidebar(false); }}><Icon size={18}/><span>{text}</span>{id === "authenticity" && m.pending_authenticity > 0 ? <b>{m.pending_authenticity}</b> : null}</button>)}
+        {sections.map(([id, text, Icon]) => <button key={id} className={active === id ? "active" : ""} onClick={() => { setActive(id); setSidebar(false); }}><Icon size={18}/><span>{text}</span>{id === "listings" && moderationQueue.length > 0 ? <b>{moderationQueue.length}</b> : id === "authenticity" && m.pending_authenticity > 0 ? <b>{m.pending_authenticity}</b> : null}</button>)}
         <p>SISTEMI</p>
         <button><Activity size={18}/><span>Aktiviteti</span></button>
         <button><Settings size={18}/><span>Konfigurimi</span></button>
@@ -66,7 +70,21 @@ export default function AdminDashboard({ initialData, admin }: { initialData: Sn
       </header>
       <div className="admin-content">
         <div className="page-heading"><div><p><Command size={14}/> ADMIN / {active.toUpperCase()}</p><h1>{title}</h1><span>Kontroll i plotë dhe të dhëna në kohë reale për Clozer.</span></div><div className="live"><i/> LIVE <small>Përditësuar {new Date(data.generated_at).toLocaleTimeString("sq-AL", {hour:"2-digit",minute:"2-digit"})}</small></div></div>
-        {active === "overview" ? <Overview data={data} /> : <DataSection type={active} rows={rows} query={query} />}
+        {notice && <div className="moderation-notice">{notice}</div>}
+        {active === "overview" ? <Overview data={data} /> : <DataSection type={active} rows={rows} query={query} moderationQueue={moderationQueue} moderating={moderating} onModerate={async (listing, status) => {
+          let note = "";
+          if (status !== "active") {
+            note = window.prompt(status === "changes_requested" ? "Çfarë duhet të ndryshojë shitësi?" : "Shkruaj arsyen e refuzimit:")?.trim() || "";
+            if (!note) return;
+          }
+          setModerating(listing.id);
+          setNotice("");
+          const { error } = await createClient().from("listings").update({ status, moderation_note: note || null }).eq("id", listing.id);
+          setModerating(null);
+          if (error) { setNotice(`Gabim: ${error.message}`); return; }
+          setModerationQueue(current => current.filter(item => item.id !== listing.id));
+          setNotice(status === "active" ? "Produkti u aprovua dhe u publikua." : status === "changes_requested" ? "Kërkesa për ndryshime iu dërgua shitësit." : "Produkti u refuzua dhe shitësi u njoftua.");
+        }} />}
       </div>
     </main>
   </div>;
@@ -94,9 +112,13 @@ function Overview({ data }: { data: Snapshot }) {
 function PanelTitle({ icon: Icon, title, subtitle }: any) { return <div className="panel-title"><div><Icon size={18}/><span><strong>{title}</strong><small>{subtitle}</small></span></div><button><MoreHorizontal/></button></div>; }
 function Health({ label: text, value, tone }: any) { return <div className="health-row"><span><i className={tone}/>{text}</span><strong>{value}</strong></div>; }
 
-function DataSection({ type, rows }: { type: string; rows: Row[]; query: string }) {
+function DataSection({ type, rows, moderationQueue = [], moderating, onModerate }: { type: string; rows: Row[]; query: string; moderationQueue?: Row[]; moderating?: string | null; onModerate?: (listing: Row, status: "active" | "changes_requested" | "rejected") => Promise<void> }) {
   const descriptions: Record<string,string> = { users:"Llogaritë, verifikimet dhe aktiviteti", listings:"Moderimi dhe inventari i marketplace-it", orders:"Pagesat, dërgesat dhe mosmarrëveshjet", messages:"Komunikimi dhe siguria e komunitetit", authenticity:"Radha e kontrolleve të autenticitetit", catalog:"Kategoritë dhe markat e platformës" };
-  return <section className="panel data-panel"><div className="data-toolbar"><div><h2>{rows.length} rezultate</h2><p>{descriptions[type]}</p></div><div><button><ListFilter size={16}/> Filtro</button><button className="primary">Eksporto CSV</button></div></div><MiniTable rows={rows} type={type}/></section>;
+  return <>{type === "listings" && <ModerationQueue rows={moderationQueue} busy={moderating} onModerate={onModerate!}/>}<section className="panel data-panel"><div className="data-toolbar"><div><h2>{rows.length} rezultate</h2><p>{descriptions[type]}</p></div><div><button><ListFilter size={16}/> Filtro</button><button className="primary">Eksporto CSV</button></div></div><MiniTable rows={rows} type={type}/></section></>;
+}
+
+function ModerationQueue({ rows, busy, onModerate }: { rows: Row[]; busy?: string | null; onModerate: (listing: Row, status: "active" | "changes_requested" | "rejected") => Promise<void> }) {
+  return <section className="panel moderation-panel"><div className="moderation-heading"><div><span>RADHA E MODERIMIT</span><h2>{rows.length} produkte në pritje</h2><p>Kontrollo fotografitë dhe të dhënat para publikimit.</p></div><ShieldCheck/></div>{rows.length ? <div className="moderation-grid">{rows.map(row => { const seller = Array.isArray(row.seller) ? row.seller[0] : row.seller; const image = [...(row.listing_images || [])].sort((a,b) => a.sort_order-b.sort_order)[0]; const publicUrl = image?.storage_path && process.env.NEXT_PUBLIC_SUPABASE_URL ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/listing-images/${image.storage_path.split("/").map(encodeURIComponent).join("/")}` : ""; return <article key={row.id}><div className="moderation-image">{publicUrl ? <img src={publicUrl} alt={row.title}/> : <ShoppingBag/>}</div><div className="moderation-copy"><span className="status">{label(row.status)}</span><h3>{row.title}</h3><p>{seller?.full_name || seller?.username || "Shitës CLOZER"} · {row.category?.name_sq || "Pa kategori"}</p><strong>{money(Number(row.price))}</strong>{row.moderation_note && <small>{row.moderation_note}</small>}</div><div className="moderation-actions"><button disabled={busy === row.id} className="approve" onClick={() => void onModerate(row,"active")}><BadgeCheck/> Aprovo</button><button disabled={busy === row.id} onClick={() => void onModerate(row,"changes_requested")}>Kërko ndryshime</button><button disabled={busy === row.id} className="reject" onClick={() => void onModerate(row,"rejected")}>Refuzo</button></div></article>})}</div> : <div className="empty compact"><BadgeCheck/><h3>Radha është e pastër</h3><p>Nuk ka produkte që presin aprovim.</p></div>}</section>;
 }
 
 function MiniTable({ rows, type }: { rows: Row[]; type: string }) {

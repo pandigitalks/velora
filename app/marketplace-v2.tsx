@@ -3907,12 +3907,12 @@ function SellPage({
     return (
       <main className="v2-sell-page">
         <div className="v2-publish-success v2-ai-result">
-          <Check />
-          <span>SHPALLJA U PUBLIKUA</span>
-          <h1>Produkti yt është aktiv.</h1>
+          <Clock3 />
+          <span>U DËRGUA PËR SHQYRTIM</span>
+          <h1>Produkti yt është në pritje.</h1>
           <p>
-            Analiza AI është e ndarë nga vendimi final dhe nuk paraqet garanci
-            absolute autenticiteti.
+            Ekipi CLOZER do ta kontrollojë para se të shfaqet publikisht. Do të
+            njoftohesh sapo të aprovohet ose nëse kërkohen ndryshime.
           </p>
           {analyzing ? (
             <div className="v2-ai-state">
@@ -3943,7 +3943,7 @@ function SellPage({
               className="v2-pill dark"
               onClick={() => router.push(`/listing/${listingId}`)}
             >
-              Shiko shpalljen
+              Shiko statusin
             </button>
             <button
               className="v2-pill outline"
