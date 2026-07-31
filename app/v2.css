@@ -3940,14 +3940,14 @@
     margin-left: 8px;
   }
   .v2-hero {
-    height: 540px;
-    min-height: 540px;
+    height: 460px;
+    min-height: 460px;
     background: #1b1b19;
   }
   .v2-hero-video {
     width: 100%;
-    height: auto;
-    aspect-ratio: 16 / 9;
+    height: 235px;
+    aspect-ratio: auto;
     object-fit: cover;
     object-position: center;
     background: #eef1f1;
@@ -3956,9 +3956,9 @@
     background: linear-gradient(
       0deg,
       #1b1b19 0%,
-      rgba(27, 27, 25, 0.98) 44%,
-      rgba(27, 27, 25, 0.28) 63%,
-      transparent 78%
+      rgba(27, 27, 25, 0.98) 40%,
+      rgba(27, 27, 25, 0.3) 61%,
+      transparent 76%
     );
   }
 
@@ -3999,7 +3999,7 @@
     left: 20px;
     right: 20px;
     top: auto;
-    bottom: 104px;
+    bottom: 92px;
     transform: none;
   }
   .v2-hero-copy h1 {
