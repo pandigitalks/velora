@@ -2,7 +2,6 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -54,7 +53,7 @@ import {
   WandSparkles,
   X,
 } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "../lib/supabase/client";
 import {
   createListing,
@@ -2181,47 +2180,73 @@ function HomePage({
   signedIn: boolean;
   boosted: Product[];
 }) {
+  const heroVideo = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const resumeHeroVideo = () => {
+      if (document.visibilityState === "visible")
+        heroVideo.current?.play().catch(() => undefined);
+    };
+    heroVideo.current?.play().catch(() => undefined);
+    document.addEventListener("visibilitychange", resumeHeroVideo);
+    window.addEventListener("focus", resumeHeroVideo);
+    return () => {
+      document.removeEventListener("visibilitychange", resumeHeroVideo);
+      window.removeEventListener("focus", resumeHeroVideo);
+    };
+  }, []);
+
   return (
     <main>
-      <section className="v2-new-hero">
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="v2-new-hero-copy">
-          <span>CLOZER · CURATED RESALE</span>
-          <h1>Moda e mirë<br/><i>vazhdon.</i></h1>
-          <p>Pjesë ikonike, të verifikuara dhe të zgjedhura me kujdes për jetën e tyre të dytë.</p>
+      <section className="v2-hero">
+        <video
+          ref={heroVideo}
+          className="v2-hero-video"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          poster="/assets/velora-hero-poster.jpg"
+          aria-label="CLOZER fashion editorial"
+          onCanPlay={(event) =>
+            event.currentTarget.play().catch(() => undefined)
+          }
+        >
+          <source src="/assets/velora-hero.mp4" type="video/mp4" />
+        </video>
+        <div className="v2-hero-overlay" />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="v2-hero-copy"
+        >
+          <h1>Gjej tënden.</h1>
           <div>
-            <Link href="/explore" className="v2-pill dark">Eksploro koleksionin <ArrowRight /></Link>
-            <Link href={signedIn ? "/sell" : "/?login=sell"} className="v2-text-link">Shit një pjesë <ArrowRight /></Link>
+            <Link href="/explore" className="v2-pill light">
+              Shop the edit
+              <ArrowRight />
+            </Link>
+            <Link
+              href={signedIn ? "/sell" : "/?login=sell"}
+              className="v2-pill glass"
+            >
+              Sell a piece
+            </Link>
           </div>
-          <aside><ShieldCheck/><span><b>E VERIFIKUAR</b><small>Kontrolluar nga ekspertët CLOZER</small></span></aside>
         </motion.div>
-        <div className="v2-new-hero-art">
-          <Image
-            className="v2-new-hero-main"
-            src="/assets/blazer-one.webp"
-            alt="CLOZER fashion edit"
-            fill
-            priority
-            quality={72}
-            sizes="(max-width: 700px) 100vw, 54vw"
-          />
-          <div className="v2-new-hero-card">
-            <Image
-              src="/assets/bag-one.webp"
-              alt="Përzgjedhje CLOZER"
-              width={180}
-              height={130}
-              quality={68}
-              sizes="(max-width: 700px) 140px, 180px"
-            />
-            <span>THE WEEKLY EDIT<br/><b>01 / 06</b></span>
-          </div>
+        <div className="v2-trust">
+          <ShieldCheck />
+          <span>
+            <b>CLOZER AUTHENTICATED</b>
+            <small>Expert reviewed, buyer protected</small>
+          </span>
         </div>
       </section>
       <section className="v2-section v2-home-boost">
         <div className="v2-section-head">
           <div>
-            <span>CLOZER EDIT</span>
-            <h2>Përzgjedhja e javës</h2>
+            <span>CLOZER BOOST</span>
+            <h2>Në fokus tani</h2>
           </div>
           <Link href="/explore">Shiko të gjitha <ArrowRight /></Link>
         </div>
@@ -2230,7 +2255,7 @@ function HomePage({
             <ProductCard key={p.id} p={p} saved={saved} toggle={toggle} add={add} />
           ))}
         </div>
-        <p className="v2-boost-note"><TrendingUp /> Çdo pjesë është zgjedhur për gjendjen, historinë dhe vlerën e saj.</p>
+        <p className="v2-boost-note"><TrendingUp /> Pozicionet e promovuara shënohen gjithmonë qartë.</p>
       </section>
       <section className="v2-worlds v2-section">
         <div className="v2-section-head">
