@@ -121,7 +121,7 @@ export async function POST(request: Request) {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (caught) {
-    console.error("VELORA authenticity analysis failed", caught);
+    console.error("CLOZER authenticity analysis failed", caught);
     return error("Analiza AI nuk u përfundua. Provo përsëri.", 500);
   }
 }
