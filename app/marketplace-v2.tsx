@@ -1395,7 +1395,7 @@ function AuthModal({
       onClick={close}
     >
       <motion.section
-        className="v2-auth-modal"
+        className={`v2-auth-modal${notice ? " is-confirmed" : ""}`}
         initial={{ opacity: 0, y: 18, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 18, scale: 0.98 }}
@@ -1412,84 +1412,94 @@ function AuthModal({
           <X />
         </button>
         <Brand />
-        <span>CLOZER ACCOUNT</span>
-        <h1>{mode === "login" ? "Mirë se vjen." : "Krijo llogarinë."}</h1>
-        <p>
-          {mode === "login"
-            ? "Kyçu për të ruajtur produktet, për të dërguar oferta dhe për të shitur."
-            : "Ruaj produktet, publiko shpallje dhe menaxho shitjet e tua."}
-        </p>
         {!notice ? (
-          <form onSubmit={submit}>
-            {mode === "signup" && (
+          <>
+            <span>CLOZER ACCOUNT</span>
+            <h1>
+              {mode === "login" ? "Mirë se vjen." : "Krijo llogarinë."}
+            </h1>
+            <p>
+              {mode === "login"
+                ? "Kyçu për të ruajtur produktet, për të dërguar oferta dhe për të shitur."
+                : "Ruaj produktet, publiko shpallje dhe menaxho shitjet e tua."}
+            </p>
+            <form onSubmit={submit}>
+              {mode === "signup" && (
+                <label>
+                  Emri i plotë
+                  <input
+                    autoComplete="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Emri dhe mbiemri"
+                  />
+                </label>
+              )}
               <label>
-                Emri i plotë
+                Email
                 <input
-                  autoComplete="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Emri dhe mbiemri"
+                  autoComplete={mode === "login" ? "username" : "email"}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="emri@email.com"
                 />
               </label>
-            )}
-            <label>
-              Email
-              <input
-                autoComplete={mode === "login" ? "username" : "email"}
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="emri@email.com"
-              />
-            </label>
-            <label>
-              Fjalëkalimi
-              <input
-                autoComplete={
-                  mode === "login" ? "current-password" : "new-password"
-                }
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Minimum 6 karaktere"
-              />
-            </label>
-            {error && <small className="v2-auth-error">{error}</small>}
-            <button disabled={loading} className="v2-pill dark wide">
-              {loading
-                ? "Duke u lidhur…"
-                : mode === "login"
-                  ? "Kyçu"
-                  : "Krijo llogari"}
-              <ArrowRight />
-            </button>
-          </form>
+              <label>
+                Fjalëkalimi
+                <input
+                  autoComplete={
+                    mode === "login" ? "current-password" : "new-password"
+                  }
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Minimum 6 karaktere"
+                />
+              </label>
+              {error && <small className="v2-auth-error">{error}</small>}
+              <button disabled={loading} className="v2-pill dark wide">
+                {loading
+                  ? "Duke u lidhur…"
+                  : mode === "login"
+                    ? "Kyçu"
+                    : "Krijo llogari"}
+                <ArrowRight />
+              </button>
+            </form>
+            <div className="v2-auth-switch">
+              <span>
+                {mode === "login" ? "Nuk ke llogari?" : "Ke tashmë llogari?"}
+              </span>
+              <button
+                onClick={() => {
+                  setMode(mode === "login" ? "signup" : "login");
+                  setError("");
+                  setNotice("");
+                }}
+              >
+                {mode === "login" ? "Regjistrohu" : "Kyçu"}
+              </button>
+            </div>
+            <small className="v2-auth-note">
+              Llogaria mbrohet nga Supabase Auth dhe të dhënat kontrollohen me
+              RLS.
+            </small>
+          </>
         ) : (
           <div className="v2-auth-confirmation" role="status">
-            <small className="v2-auth-note">{notice}</small>
+            <div className="v2-auth-confirmation-icon">
+              <Mail />
+            </div>
+            <span>EMAILI U DËRGUA</span>
+            <h1>Kontrollo emailin.</h1>
+            <p>{notice}</p>
             <button className="v2-pill dark wide" onClick={close}>
               Në rregull
               <ArrowRight />
             </button>
           </div>
         )}
-        <div className="v2-auth-switch">
-          <span>
-            {mode === "login" ? "Nuk ke llogari?" : "Ke tashmë llogari?"}
-          </span>
-          <button
-            onClick={() => {
-              setMode(mode === "login" ? "signup" : "login");
-              setError("");
-              setNotice("");
-            }}
-          >
-            {mode === "login" ? "Regjistrohu" : "Kyçu"}
-          </button>
-        </div>
-        <small className="v2-auth-note">
-          Llogaria mbrohet nga Supabase Auth dhe të dhënat kontrollohen me RLS.
-        </small>
       </motion.section>
     </motion.div>
   );

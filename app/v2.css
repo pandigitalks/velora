@@ -753,6 +753,44 @@
   text-align: center;
   margin-top: 19px;
 }
+.v2-auth-modal.is-confirmed {
+  width: min(100%, 390px);
+  padding: 30px;
+}
+.v2-auth-modal.is-confirmed > .v2-brand {
+  margin-bottom: 26px;
+}
+.v2-auth-confirmation {
+  display: grid;
+}
+.v2-auth-confirmation-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #f1f0eb;
+  display: grid;
+  place-items: center;
+  margin-bottom: 22px;
+}
+.v2-auth-confirmation-icon svg {
+  width: 21px;
+  height: 21px;
+}
+.v2-auth-confirmation > span {
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.17em;
+}
+.v2-auth-confirmation h1 {
+  font-size: 36px;
+  margin: 10px 0 12px;
+}
+.v2-auth-confirmation p {
+  color: #66635c;
+  font-size: 12px;
+  line-height: 1.65;
+  margin: 0 0 22px;
+}
 .v2-dash-toast {
   margin-top: 18px;
   border: 1px solid #b9dbcc;
