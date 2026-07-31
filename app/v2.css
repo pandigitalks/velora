@@ -501,12 +501,14 @@
   width: 12px;
 }
 .v2-product-media > .v2-boost-badge {
-  z-index: 3;
-  left: auto;
-  right: 11px;
-  top: 11px;
+  z-index: 4;
+  left: 11px;
+  right: auto;
+  top: 52px;
+  max-width: calc(100% - 22px);
   background: #dfff73;
   color: #1b2712;
+  white-space: nowrap;
   box-shadow: 0 5px 15px rgba(34, 44, 19, 0.12);
 }
 .v2-product-media > i {
