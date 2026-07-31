@@ -59,6 +59,12 @@ import {
   getPublicListings,
   type PublicListing,
 } from "../lib/velora/listings";
+import {
+  categoryTree,
+  departmentGender,
+  departments,
+  findCategory,
+} from "../lib/velora/categories";
 
 type ProductId = string | number;
 
@@ -1148,15 +1154,9 @@ const products: Product[] = [
   },
 ];
 
-const categories = [
-  "All",
-  "Women",
-  "Bags",
-  "Sneakers",
-  "Watches",
-  "Jewelry",
-  "Accessories",
-];
+const categories = ["all", ...departments.map((item) => item.slug)];
+const categoryLabel = (slug: string) =>
+  slug === "all" ? "Të gjitha" : findCategory(slug)?.nameSq || slug;
 const seedNotes: Note[] = [
   {
     id: 1,
@@ -1808,11 +1808,30 @@ function AppHeader({
           </div>
         </div>
         <div className="v2-catbar">
-          <Link href="/explore?sort=new">New today</Link>
-          {categories.slice(1).map((c) => (
-            <Link key={c} href={`/explore?category=${encodeURIComponent(c)}`}>
-              {c}
-            </Link>
+          <Link href="/explore?sort=new">Të rejat</Link>
+          {categoryTree.map((department) => (
+            <div className="v2-catmenu" key={department.slug}>
+              <Link href={`/explore?department=${department.slug}`}>
+                {department.nameSq}
+              </Link>
+              <div className="v2-megamenu">
+                {department.children?.map((group) => (
+                  <section key={group.slug}>
+                    <Link href={`/explore?department=${department.slug}&group=${group.slug}`}>
+                      {group.nameSq}
+                    </Link>
+                    {group.children?.map((subcategory) => (
+                      <Link
+                        key={subcategory.slug}
+                        href={`/explore?department=${department.slug}&category=${subcategory.slug}`}
+                      >
+                        {subcategory.nameSq}
+                      </Link>
+                    ))}
+                  </section>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </header>
@@ -2394,7 +2413,8 @@ function ExplorePage({
     [],
   );
   const q = (params.get("q") || "").toLowerCase();
-  const category = params.get("category") || "All";
+  const department = params.get("department") || "all";
+  const category = params.get("category") || "all";
   const sort = params.get("sort") || "curated";
   const active = {
     brand: params.get("brand") || "All",
@@ -2452,7 +2472,11 @@ function ExplorePage({
       catalog
         .filter(
           (p) =>
-            (category === "All" || p.category === category) &&
+            (department === "all" ||
+              value(p, "gender") === departmentGender(department)) &&
+            (category === "all" ||
+              p.category === category ||
+              p.category === categoryLabel(category)) &&
             (active.brand === "All" || p.brand === active.brand) &&
             (active.condition === "All" || p.condition === active.condition) &&
             (active.city === "All" || p.city === active.city) &&
@@ -2484,6 +2508,7 @@ function ExplorePage({
         ),
     [
       catalog,
+      department,
       category,
       q,
       sort,
@@ -2503,8 +2528,16 @@ function ExplorePage({
   );
   const setParam = (key: string, value: string) => {
     const next = new URLSearchParams(params.toString());
-    if (!value || value === "All") next.delete(key);
+    if (!value || value === "All" || value === "all") next.delete(key);
     else next.set(key, value);
+    router.push(`/explore${next.toString() ? `?${next}` : ""}`);
+  };
+  const setDepartmentParam = (value: string) => {
+    const next = new URLSearchParams(params.toString());
+    next.delete("category");
+    next.delete("group");
+    if (value === "all") next.delete("department");
+    else next.set("department", value);
     router.push(`/explore${next.toString() ? `?${next}` : ""}`);
   };
   const applyFilters = () => {
@@ -2606,10 +2639,10 @@ function ExplorePage({
           {categories.map((c) => (
             <button
               key={c}
-              className={category === c ? "active" : ""}
-              onClick={() => setParam("category", c)}
+              className={department === c ? "active" : ""}
+              onClick={() => setDepartmentParam(c)}
             >
-              {c}
+              {categoryLabel(c)}
             </button>
           ))}
         </div>
@@ -3660,7 +3693,9 @@ function SellPage({
   const [photos, setPhotos] = useState<Record<string, string>>({});
   const [title, setTitle] = useState("");
   const [brand, setBrand] = useState("Bottega Veneta");
-  const [category, setCategory] = useState("Bags");
+  const [department, setDepartment] = useState("women");
+  const [categoryGroup, setCategoryGroup] = useState("women-clothing");
+  const [category, setCategory] = useState("dresses");
   const [condition, setCondition] = useState("Si i ri");
   const [gender, setGender] = useState("Femra");
   const [size, setSize] = useState("");
@@ -3964,28 +3999,51 @@ function SellPage({
                 <label>
                   Kategoria
                   <select
-                    value={category}
+                    value={department}
                     onChange={(e) => {
-                      setCategory(e.target.value);
+                      const nextDepartment = e.target.value;
+                      const nextGroup = findCategory(nextDepartment)?.children?.[0];
+                      setDepartment(nextDepartment);
+                      setCategoryGroup(nextGroup?.slug || "");
+                      setCategory(nextGroup?.children?.[0]?.slug || "");
+                      setGender(departmentGender(nextDepartment));
                       setSize("");
                     }}
                   >
-                    <option value="Bags">Çanta</option>
-                    <option value="Women">Veshje</option>
-                    <option value="Sneakers">Atlete</option>
-                    <option value="Watches">Ora</option>
-                    <option value="Jewelry">Stoli</option>
+                    {departments.map((item) => (
+                      <option key={item.slug} value={item.slug}>{item.nameSq}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Grupi
+                  <select
+                    value={categoryGroup}
+                    onChange={(e) => {
+                      const nextGroup = e.target.value;
+                      setCategoryGroup(nextGroup);
+                      setCategory(findCategory(nextGroup)?.children?.[0]?.slug || "");
+                      setSize("");
+                    }}
+                  >
+                    {findCategory(department)?.children?.map((item) => (
+                      <option key={item.slug} value={item.slug}>{item.nameSq}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div>
+                <label>
+                  Nënkategoria
+                  <select value={category} onChange={(e) => { setCategory(e.target.value); setSize(""); }}>
+                    {findCategory(categoryGroup)?.children?.map((item) => (
+                      <option key={item.slug} value={item.slug}>{item.nameSq}</option>
+                    ))}
                   </select>
                 </label>
                 <label>
                   Gjendja
-                  <select
-                    value={condition}
-                    onChange={(e) => {
-                      setCondition(e.target.value);
-                      setPrice(0);
-                    }}
-                  >
+                  <select value={condition} onChange={(e) => { setCondition(e.target.value); setPrice(0); }}>
                     <option>I ri</option>
                     <option>Si i ri</option>
                     <option>Shumë mirë</option>
@@ -4008,7 +4066,7 @@ function SellPage({
                     <option>Fëmijë</option>
                   </select>
                 </label>
-                {category === "Sneakers" ? (
+                {category.includes("shoes") || category.includes("trainers") ? (
                   <label>
                     Numri i atleteve
                     <select

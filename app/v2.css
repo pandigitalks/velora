@@ -199,10 +199,59 @@
   display: flex;
   align-items: center;
   gap: 27px;
-  overflow: auto;
+  overflow: visible;
   scrollbar-width: none;
   font-size: 11px;
   font-weight: 650;
+}
+.v2-catmenu {
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+.v2-catmenu > a {
+  height: 100%;
+}
+.v2-megamenu {
+  position: fixed;
+  z-index: 80;
+  top: 104px;
+  left: 0;
+  right: 0;
+  max-height: min(68vh, 620px);
+  overflow: auto;
+  padding: 30px max(38px, calc((100vw - 1424px) / 2));
+  background: rgba(255, 255, 255, 0.98);
+  border-top: 1px solid var(--v2-line);
+  border-bottom: 1px solid var(--v2-line);
+  box-shadow: 0 22px 45px rgba(0, 0, 0, 0.09);
+  display: none;
+  grid-template-columns: repeat(5, minmax(150px, 1fr));
+  gap: 32px;
+}
+.v2-catmenu:hover .v2-megamenu,
+.v2-catmenu:focus-within .v2-megamenu {
+  display: grid;
+}
+.v2-megamenu section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 9px;
+}
+.v2-megamenu section > a:first-child {
+  margin-bottom: 5px;
+  font-size: 12px;
+  font-weight: 850;
+}
+.v2-megamenu section > a:not(:first-child) {
+  color: #5f5e59;
+  font-size: 10px;
+  font-weight: 550;
+}
+.v2-megamenu a:hover {
+  color: #000;
+  text-decoration: underline;
 }
 .v2-catbar a {
   display: flex;
@@ -3872,6 +3921,10 @@
     padding: 0 15px;
     gap: 21px;
     border-top: 1px solid var(--v2-line);
+    overflow: auto;
+  }
+  .v2-megamenu {
+    display: none !important;
   }
   .v2-header .v2-brand {
     margin-right: auto;
