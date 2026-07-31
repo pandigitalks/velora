@@ -10,6 +10,7 @@ export type NewListingInput = {
   retailPrice: number;
   price: number;
   image?: string;
+  images?: string[];
 };
 
 function dataUrlToBlob(dataUrl: string) {
@@ -65,25 +66,40 @@ export async function createListing(input: NewListingInput) {
 
   if (listingError) throw listingError;
 
-  if (input.image?.startsWith("data:")) {
-    const path = `${user.id}/${listing.id}/cover.jpg`;
+  const images = (input.images?.length ? input.images : [input.image]).filter(
+    (value): value is string => Boolean(value?.startsWith("data:")),
+  );
+  const uploadedPaths: string[] = [];
+
+  for (let index = 0; index < images.length; index += 1) {
+    const blob = dataUrlToBlob(images[index]);
+    const extension = blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : "jpg";
+    const path = `${user.id}/${listing.id}/${String(index + 1).padStart(2, "0")}.${extension}`;
     const { error: uploadError } = await supabase.storage
       .from("listing-images")
-      .upload(path, dataUrlToBlob(input.image), {
-        contentType: "image/jpeg",
-        upsert: false,
-      });
+      .upload(path, blob, { contentType: blob.type, upsert: false });
 
     if (uploadError) {
+      if (uploadedPaths.length) await supabase.storage.from("listing-images").remove(uploadedPaths);
       await supabase.from("listings").delete().eq("id", listing.id);
       throw uploadError;
     }
+    uploadedPaths.push(path);
+  }
 
-    const { error: imageError } = await supabase
-      .from("listing_images")
-      .insert({ listing_id: listing.id, storage_path: path, sort_order: 0 });
-
-    if (imageError) throw imageError;
+  if (uploadedPaths.length) {
+    const { error: imageError } = await supabase.from("listing_images").insert(
+      uploadedPaths.map((storagePath, sortOrder) => ({
+        listing_id: listing.id,
+        storage_path: storagePath,
+        sort_order: sortOrder,
+      })),
+    );
+    if (imageError) {
+      await supabase.storage.from("listing-images").remove(uploadedPaths);
+      await supabase.from("listings").delete().eq("id", listing.id);
+      throw imageError;
+    }
   }
 
   return listing.id as string;
