@@ -98,6 +98,7 @@ type Product = {
   viewsCount?: number;
   publishedAt?: string | null;
   reference?: string;
+  boostTier?: string | null;
 };
 type CartLine = { id: ProductId; qty: number };
 type Note = {
@@ -1270,6 +1271,7 @@ const publicListingToProduct = (listing: PublicListing): Product => ({
   publishedAt: listing.publishedAt,
   reference: `VL-${listing.id.replace(/-/g, "").slice(0, 8).toUpperCase()}`,
   authLevel: listing.authenticityStatus === "verified" ? "expert" : "none",
+  boostTier: listing.boostTier,
 });
 
 function AuthBadge({ p, compact = false }: { p: Product; compact?: boolean }) {
@@ -2037,6 +2039,11 @@ function ProductCard({
     <article className="v2-product">
       <Link href={`/listing/${p.id}`} className="v2-product-media">
         <ProductImage p={p} />
+        {p.boostTier && (
+          <span className="v2-boost-badge">
+            <TrendingUp /> Promovuar
+          </span>
+        )}
         <AuthBadge p={p} compact />
         <i>Shiko shpejt</i>
         {p.oldPrice && (
@@ -2134,11 +2141,13 @@ function HomePage({
   toggle,
   add,
   signedIn,
+  boosted,
 }: {
   saved: ProductId[];
   toggle: (id: ProductId) => void;
   add: (id: ProductId) => void;
   signedIn: boolean;
+  boosted: Product[];
 }) {
   const heroVideo = useRef<HTMLVideoElement>(null);
   useEffect(() => {
@@ -2201,6 +2210,21 @@ function HomePage({
             <small>Expert reviewed, buyer protected</small>
           </span>
         </div>
+      </section>
+      <section className="v2-section v2-home-boost">
+        <div className="v2-section-head">
+          <div>
+            <span>CLOZER BOOST</span>
+            <h2>Në fokus tani</h2>
+          </div>
+          <Link href="/explore">Shiko të gjitha <ArrowRight /></Link>
+        </div>
+        <div className="v2-boost-grid">
+          {boosted.slice(0, 4).map((p) => (
+            <ProductCard key={p.id} p={p} saved={saved} toggle={toggle} add={add} />
+          ))}
+        </div>
+        <p className="v2-boost-note"><TrendingUp /> Pozicionet e promovuara shënohen gjithmonë qartë.</p>
       </section>
       <section className="v2-worlds v2-section">
         <div className="v2-section-head">
@@ -7409,6 +7433,17 @@ export default function Marketplace() {
       ...products,
     ];
   }, [listings, publicListings, account]);
+  const homepageBoosted = useMemo(() => {
+    const priority: Record<string, number> = { homepage_7d: 0, urgent_3d: 1, top_24h: 2 };
+    const active = listingCatalog
+      .filter((product) => product.boostTier)
+      .sort((a, b) => (priority[a.boostTier || ""] ?? 9) - (priority[b.boostTier || ""] ?? 9));
+    if (active.length) return active;
+    return [products[0], products[11], products[12], products[15]].map((product, index) => ({
+      ...product,
+      boostTier: index === 0 ? "homepage_7d" : "top_24h",
+    }));
+  }, [listingCatalog]);
   useEffect(() => {
     void getPublicListings()
       .then(setPublicListings)
@@ -7586,6 +7621,7 @@ export default function Marketplace() {
         add={add}
         listings={signedIn ? listings : []}
         signedIn={signedIn}
+        boosted={homepageBoosted}
       />
     );
   else if (path.startsWith("/listing"))
