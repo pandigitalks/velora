@@ -43,15 +43,15 @@ export async function generateMetadata({
     id === "27"
       ? {
           title: "Pallto leshi e strukturuar",
-          description: "Pjesë premium e përzgjedhur në VELORA.",
+          description: "Pjesë premium e përzgjedhur në CLOZER.",
           image: "/assets/editorial-luxury.webp",
         }
       : null;
-  const title = listing?.title || demo?.title || "Produkt në VELORA";
+  const title = listing?.title || demo?.title || "Produkt në CLOZER";
   const description =
     listing?.description ||
     demo?.description ||
-    "Shiko detajet, gjendjen, dërgesën dhe statusin e kontrollit të këtij produkti në VELORA.";
+    "Shiko detajet, gjendjen, dërgesën dhe statusin e kontrollit të këtij produkti në CLOZER.";
   let image = demo?.image;
   if (listing?.listing_images?.length) {
     const supabase = await createServerSupabaseClient();
@@ -63,7 +63,7 @@ export async function generateMetadata({
       .getPublicUrl(first.storage_path).data.publicUrl;
   }
   return {
-    title: `${title} — VELORA`,
+    title: `${title} — CLOZER`,
     description,
     alternates: { canonical: `/listing/${id}` },
     openGraph: {
