@@ -53,7 +53,7 @@ begin
   if new.authenticity_status is distinct from old.authenticity_status
      and coalesce(current_setting('request.jwt.claim.role', true), '') <> 'service_role'
   then
-    raise exception 'authenticity_status is managed by VELORA';
+    raise exception 'authenticity_status is managed by CLOZER';
   end if;
   return new;
 end;
