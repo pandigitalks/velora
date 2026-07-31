@@ -22,6 +22,7 @@ type Snapshot = {
 
 const sections = [
   ["overview", "Pasqyra", LayoutDashboard], ["users", "Përdoruesit", Users],
+  ["seller-applications", "Aplikimet e shitësve", FileCheck2],
   ["listings", "Listimet", ShoppingBag], ["orders", "Porositë", PackageCheck],
   ["messages", "Mesazhet", MessageSquare], ["authenticity", "Autenticiteti", ShieldCheck],
   ["catalog", "Katalogu", Boxes],
@@ -31,11 +32,12 @@ const money = (value: number) => new Intl.NumberFormat("sq-AL", { style: "curren
 const date = (value?: string) => value ? new Intl.DateTimeFormat("sq-AL", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value)) : "—";
 const label = (value?: string) => (value || "—").replaceAll("_", " ");
 
-export default function AdminDashboard({ initialData, initialModerationQueue, admin }: { initialData: Snapshot; initialModerationQueue: Row[]; admin: Row }) {
+export default function AdminDashboard({ initialData, initialModerationQueue, initialSellerApplications, admin }: { initialData: Snapshot; initialModerationQueue: Row[]; initialSellerApplications: Row[]; admin: Row }) {
   const [active, setActive] = useState("overview");
   const [query, setQuery] = useState("");
   const [sidebar, setSidebar] = useState(false);
   const [moderationQueue, setModerationQueue] = useState(initialModerationQueue);
+  const [sellerApplications, setSellerApplications] = useState(initialSellerApplications);
   const [moderating, setModerating] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const data = initialData;
@@ -43,18 +45,18 @@ export default function AdminDashboard({ initialData, initialModerationQueue, ad
   const title = sections.find(([id]) => id === active)?.[1] || "Pasqyra";
 
   const rows = useMemo(() => {
-    const source = active === "catalog" ? [...(data.categories || []), ...(data.brands || [])] : ((data as any)[active] || []);
+    const source = active === "catalog" ? [...(data.categories || []), ...(data.brands || [])] : active === "seller-applications" ? sellerApplications : ((data as any)[active] || []);
     if (!query.trim()) return source;
     const q = query.toLowerCase();
     return source.filter((row: Row) => JSON.stringify(row).toLowerCase().includes(q));
-  }, [active, data, query]);
+  }, [active, data, query, sellerApplications]);
 
   return <div className="admin-shell">
     <aside className={`admin-sidebar ${sidebar ? "is-open" : ""}`}>
       <div className="admin-brand"><span>V</span><div>CLOZER<small>COMMAND CENTER</small></div><button onClick={() => setSidebar(false)}><X size={19}/></button></div>
       <nav>
         <p>OPERACIONET</p>
-        {sections.map(([id, text, Icon]) => <button key={id} className={active === id ? "active" : ""} onClick={() => { setActive(id); setSidebar(false); }}><Icon size={18}/><span>{text}</span>{id === "listings" && moderationQueue.length > 0 ? <b>{moderationQueue.length}</b> : id === "authenticity" && m.pending_authenticity > 0 ? <b>{m.pending_authenticity}</b> : null}</button>)}
+        {sections.map(([id, text, Icon]) => <button key={id} className={active === id ? "active" : ""} onClick={() => { setActive(id); setSidebar(false); }}><Icon size={18}/><span>{text}</span>{id === "listings" && moderationQueue.length > 0 ? <b>{moderationQueue.length}</b> : id === "seller-applications" && sellerApplications.length > 0 ? <b>{sellerApplications.length}</b> : id === "authenticity" && m.pending_authenticity > 0 ? <b>{m.pending_authenticity}</b> : null}</button>)}
         <p>SISTEMI</p>
         <button><Activity size={18}/><span>Aktiviteti</span></button>
         <button><Settings size={18}/><span>Konfigurimi</span></button>
@@ -71,7 +73,17 @@ export default function AdminDashboard({ initialData, initialModerationQueue, ad
       <div className="admin-content">
         <div className="page-heading"><div><p><Command size={14}/> ADMIN / {active.toUpperCase()}</p><h1>{title}</h1><span>Kontroll i plotë dhe të dhëna në kohë reale për Clozer.</span></div><div className="live"><i/> LIVE <small>Përditësuar {new Date(data.generated_at).toLocaleTimeString("sq-AL", {hour:"2-digit",minute:"2-digit"})}</small></div></div>
         {notice && <div className="moderation-notice">{notice}</div>}
-        {active === "overview" ? <Overview data={data} /> : <DataSection type={active} rows={rows} query={query} moderationQueue={moderationQueue} moderating={moderating} onModerate={async (listing, status) => {
+        {active === "overview" ? <Overview data={data} /> : active === "seller-applications" ? <SellerApplications rows={rows} busy={moderating} onReview={async (application, decision) => {
+          const note = decision === "rejected" ? window.prompt("Shkruaj arsyen e refuzimit:")?.trim() || "" : "";
+          if (decision === "rejected" && !note) return;
+          setModerating(application.user_id);
+          setNotice("");
+          const { error } = await createClient().rpc("review_seller_application", { target_user_id: application.user_id, decision, review_note: note || null });
+          setModerating(null);
+          if (error) { setNotice(`Gabim: ${error.message}`); return; }
+          setSellerApplications(current => current.filter(item => item.user_id !== application.user_id));
+          setNotice(decision === "approved" ? "Shitësi u aprovua dhe paneli u aktivizua." : "Aplikimi u refuzua.");
+        }} /> : <DataSection type={active} rows={rows} query={query} moderationQueue={moderationQueue} moderating={moderating} onModerate={async (listing, status) => {
           let note = "";
           if (status !== "active") {
             note = window.prompt(status === "changes_requested" ? "Çfarë duhet të ndryshojë shitësi?" : "Shkruaj arsyen e refuzimit:")?.trim() || "";
@@ -88,6 +100,10 @@ export default function AdminDashboard({ initialData, initialModerationQueue, ad
       </div>
     </main>
   </div>;
+}
+
+function SellerApplications({ rows, busy, onReview }: { rows: Row[]; busy: string | null; onReview: (application: Row, decision: "approved" | "rejected") => Promise<void> }) {
+  return <section className="panel moderation-panel"><div className="moderation-heading"><div><span>APLIKIMET E SHITËSVE</span><h2>{rows.length} aplikime në pritje</h2><p>Kontrollo të dhënat para aktivizimit të panelit të shitësit.</p></div><Users/></div>{rows.length ? <div className="seller-application-admin">{rows.map(row => <article key={row.user_id}><div><span className="status">{row.seller_type === "business" ? "Biznes" : "Individual"}</span><h3>{row.display_name}</h3><p>{row.phone} · {row.city}</p>{row.note && <small>{row.note}</small>}<em>{date(row.created_at)}</em></div><div className="moderation-actions"><button className="approve" disabled={busy === row.user_id} onClick={() => void onReview(row,"approved")}><BadgeCheck/> Aprovo</button><button className="reject" disabled={busy === row.user_id} onClick={() => void onReview(row,"rejected")}><X/> Refuzo</button></div></article>)}</div> : <div className="empty compact"><BadgeCheck/><h3>Nuk ka aplikime në pritje</h3><p>Aplikimet e reja do të shfaqen këtu.</p></div>}</section>;
 }
 
 function Overview({ data }: { data: Snapshot }) {

@@ -129,6 +129,7 @@ type AccountProfile = {
   city: string;
   sellerVerified: boolean;
   identityVerified: boolean;
+  sellerApplicationStatus: "pending" | "approved" | "rejected" | null;
 };
 type ListingDraft = {
   id: ProductId;
@@ -5485,7 +5486,14 @@ function ProfilePage({
 }) {
   const path = usePathname();
   const [tab, setTab] = useState("Wardrobe");
-  if (path === "/dashboard") return <Dashboard listings={listings} />;
+  if (path === "/dashboard")
+    return account?.sellerVerified ? (
+      <Dashboard listings={listings} />
+    ) : (
+      <main className="v2-page">
+        <SellerApplicationCard account={account} />
+      </main>
+    );
   const initials = (account?.fullName || account?.email || "V")
     .split(/\s+/)
     .map((x) => x[0])
@@ -5528,10 +5536,12 @@ function ProfilePage({
           </div>
         </div>
         <aside>
-          <Link className="v2-pill dark" href="/dashboard">
-            <LayoutDashboard />
-            Paneli i shitësit
-          </Link>
+          {account?.sellerVerified && (
+            <Link className="v2-pill dark" href="/dashboard">
+              <LayoutDashboard />
+              Paneli i shitësit
+            </Link>
+          )}
           <Link className="v2-pill outline" href="/settings">
             <Settings />
           </Link>
@@ -5551,6 +5561,7 @@ function ProfilePage({
           </span>
         )}
       </div>
+      {!account?.sellerVerified && <SellerApplicationCard account={account} />}
       <div className="v2-tabs">
         {["Wardrobe", "Reviews", "Sold", "Collections"].map((x) => (
           <button
@@ -5598,6 +5609,91 @@ function ProfilePage({
         />
       )}
     </main>
+  );
+}
+
+function SellerApplicationCard({
+  account,
+}: {
+  account: AccountProfile | null;
+}) {
+  const [status, setStatus] = useState(account?.sellerApplicationStatus || null);
+  const [name, setName] = useState(account?.fullName || "");
+  const [phone, setPhone] = useState("");
+  const [city, setCity] = useState(account?.city || "");
+  const [sellerType, setSellerType] = useState<"individual" | "business">(
+    "individual",
+  );
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!account || !name.trim() || !phone.trim() || !city.trim()) {
+      setError("Plotëso emrin, telefonin dhe qytetin.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    const { error: requestError } = await createClient()
+      .from("seller_applications")
+      .upsert(
+        {
+          user_id: account.id,
+          display_name: name.trim(),
+          phone: phone.trim(),
+          city: city.trim(),
+          seller_type: sellerType,
+          note: note.trim() || null,
+          status: "pending",
+          admin_note: null,
+          reviewed_by: null,
+          reviewed_at: null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" },
+      );
+    setBusy(false);
+    if (requestError) {
+      setError("Aplikimi nuk u dërgua. Provo përsëri.");
+      return;
+    }
+    setStatus("pending");
+  };
+  if (status === "pending")
+    return (
+      <section className="v2-seller-application status-card">
+        <Clock3 />
+        <div>
+          <span>APLIKIMI U DËRGUA</span>
+          <h2>Në pritje të aprovimit.</h2>
+          <p>Do të aktivizojmë panelin e shitësit pasi ekipi CLOZER ta shqyrtojë aplikimin.</p>
+        </div>
+      </section>
+    );
+  return (
+    <section className="v2-seller-application">
+      <div className="v2-seller-application-copy">
+        <span>{status === "rejected" ? "APLIKO PËRSËRI" : "BËHU SHITËS"}</span>
+        <h2>Fillo të shesësh në CLOZER.</h2>
+        <p>Çdo llogari nis si blerës. Plotëso kërkesën dhe paneli i shitësit aktivizohet pas aprovimit.</p>
+      </div>
+      <form onSubmit={submit}>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Emri i plotë ose biznesi" />
+        <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Telefoni" />
+        <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Qyteti" />
+        <select value={sellerType} onChange={(e) => setSellerType(e.target.value as "individual" | "business")}>
+          <option value="individual">Shitës individual</option>
+          <option value="business">Biznes</option>
+        </select>
+        <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Çfarë planifikon të shesësh? (opsionale)" />
+        {error && <small className="v2-auth-error">{error}</small>}
+        <button disabled={busy} className="v2-pill dark">
+          {busy ? "Duke dërguar…" : "Dërgo aplikimin"}
+          <ArrowRight />
+        </button>
+      </form>
+    </section>
   );
 }
 
@@ -7513,13 +7609,20 @@ export default function Marketplace() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select(
-          "id,full_name,username,avatar_url,city,seller_verified,identity_verified",
-        )
-        .eq("id", user.id)
-        .maybeSingle();
+      const [{ data: profile }, { data: sellerApplication }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select(
+            "id,full_name,username,avatar_url,city,seller_verified,identity_verified",
+          )
+          .eq("id", user.id)
+          .maybeSingle(),
+        supabase
+          .from("seller_applications")
+          .select("status")
+          .eq("user_id", user.id)
+          .maybeSingle(),
+      ]);
       setAccount({
         id: user.id,
         email: user.email || "",
@@ -7535,6 +7638,9 @@ export default function Marketplace() {
         city: profile?.city || "",
         sellerVerified: Boolean(profile?.seller_verified),
         identityVerified: Boolean(profile?.identity_verified),
+        sellerApplicationStatus:
+          (sellerApplication?.status as AccountProfile["sellerApplicationStatus"]) ||
+          null,
       });
     };
     void load();
@@ -7641,7 +7747,7 @@ export default function Marketplace() {
     ]);
   };
   const id = decodeURIComponent(path.split("/").pop() || "");
-  const hideShell = path === "/sell";
+  const hideShell = path === "/sell" && Boolean(account?.sellerVerified);
   let content: React.ReactNode;
   if (path === "/explore" || path === "/search")
     content = (
@@ -7666,7 +7772,11 @@ export default function Marketplace() {
       />
     );
   else if (path === "/sell")
-    content = (
+    content = signedIn && !account?.sellerVerified ? (
+      <main className="v2-page">
+        <SellerApplicationCard account={account} />
+      </main>
+    ) : (
       <SellPage
         signedIn={signedIn}
         publish={async (p) => {

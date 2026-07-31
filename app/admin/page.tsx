@@ -19,7 +19,11 @@ export default async function AdminPage() {
 
   if (!profile?.is_admin) redirect("/?admin=forbidden");
 
-  const [{ data, error }, { data: moderationQueue, error: queueError }] =
+  const [
+    { data, error },
+    { data: moderationQueue, error: queueError },
+    { data: sellerApplications, error: sellerError },
+  ] =
     await Promise.all([
       supabase.rpc("admin_dashboard_snapshot"),
       supabase
@@ -29,9 +33,15 @@ export default async function AdminPage() {
         )
         .in("status", ["pending_review", "changes_requested"])
         .order("created_at", { ascending: true }),
+      supabase
+        .from("seller_applications")
+        .select("user_id,display_name,phone,city,seller_type,note,status,created_at")
+        .eq("status", "pending")
+        .order("created_at", { ascending: true }),
     ]);
   if (error) throw new Error(`Admin dashboard: ${error.message}`);
   if (queueError) throw new Error(`Moderation queue: ${queueError.message}`);
+  if (sellerError) throw new Error(`Seller applications: ${sellerError.message}`);
 
-  return <AdminDashboard initialData={data} initialModerationQueue={moderationQueue || []} admin={profile} />;
+  return <AdminDashboard initialData={data} initialModerationQueue={moderationQueue || []} initialSellerApplications={sellerApplications || []} admin={profile} />;
 }

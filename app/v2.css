@@ -3303,6 +3303,64 @@
 .v2-profile-trust svg {
   width: 13px;
 }
+.v2-seller-application {
+  margin: 26px 0;
+  padding: 28px;
+  border: 1px solid #dedbd2;
+  border-radius: 18px;
+  background: #f8f7f3;
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(300px, 1.2fr);
+  gap: 34px;
+}
+.v2-seller-application-copy > span,
+.v2-seller-application.status-card span {
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+}
+.v2-seller-application h2 {
+  font: 400 32px Georgia, serif;
+  letter-spacing: -0.035em;
+  margin: 10px 0;
+}
+.v2-seller-application p {
+  color: #6b6860;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.v2-seller-application form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.v2-seller-application input,
+.v2-seller-application select,
+.v2-seller-application textarea {
+  border: 1px solid #d9d6cd;
+  background: #fff;
+  border-radius: 10px;
+  padding: 12px;
+  font: inherit;
+  font-size: 12px;
+}
+.v2-seller-application textarea,
+.v2-seller-application form > button,
+.v2-seller-application form > small {
+  grid-column: 1 / -1;
+}
+.v2-seller-application textarea { min-height: 78px; resize: vertical; }
+.v2-seller-application.status-card {
+  grid-template-columns: 48px 1fr;
+  align-items: start;
+}
+.v2-seller-application.status-card > svg {
+  width: 44px;
+  height: 44px;
+  padding: 12px;
+  border-radius: 50%;
+  background: #e9e6dc;
+}
 .v2-tabs {
   border-bottom: 1px solid var(--v2-line);
   display: flex;
@@ -7927,5 +7985,21 @@
   }
   .v2-mobile-buybar .buy {
     padding: 0 15px;
+  }
+}
+@media (max-width: 760px) {
+  .v2-seller-application {
+    grid-template-columns: 1fr;
+    padding: 20px;
+    gap: 20px;
+  }
+  .v2-seller-application form {
+    grid-template-columns: 1fr;
+  }
+  .v2-seller-application form > * {
+    grid-column: 1;
+  }
+  .v2-seller-application.status-card {
+    grid-template-columns: 42px 1fr;
   }
 }
