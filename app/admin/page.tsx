@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "../../lib/supabase/server";
 import AdminDashboard from "./admin-dashboard";
 
-export const metadata = { title: "Admin Command Center — VELORA" };
+export const metadata = { title: "Admin Command Center — CLOZER" };
 
 export default async function AdminPage() {
   const supabase = await createServerSupabaseClient();
