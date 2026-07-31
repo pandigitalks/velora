@@ -36,6 +36,7 @@ export type PublicListing = {
   authenticityStatus: string;
   shippingAvailable: boolean;
   negotiable: boolean;
+  boostTier: string | null;
 };
 
 type PublicListingRow = {
@@ -63,6 +64,7 @@ type PublicListingRow = {
     seller_verified: boolean;
   } | null;
   listing_images: Array<{ storage_path: string; sort_order: number }>;
+  listing_boosts: Array<{ tier: string; status: string; expires_at: string | null }>;
 };
 
 const sellerSlug = (name: string) =>
@@ -78,7 +80,7 @@ export async function getPublicListings(): Promise<PublicListing[]> {
   const { data, error } = await supabase
     .from("listings")
     .select(
-      "id,title,description,price,condition,size,color,material,gender,city,views_count,published_at,authenticity_status,shipping_available,negotiable,brand:brands(name),category:categories(name_sq),seller:profiles!listings_seller_id_fkey(full_name,username,avatar_url,seller_verified),listing_images(storage_path,sort_order)",
+      "id,title,description,price,condition,size,color,material,gender,city,views_count,published_at,authenticity_status,shipping_available,negotiable,brand:brands(name),category:categories(name_sq),seller:profiles!listings_seller_id_fkey(full_name,username,avatar_url,seller_verified),listing_images(storage_path,sort_order),listing_boosts(tier,status,expires_at)",
     )
     .eq("status", "active")
     .order("published_at", { ascending: false });
@@ -119,6 +121,12 @@ export async function getPublicListings(): Promise<PublicListing[]> {
       authenticityStatus: row.authenticity_status,
       shippingAvailable: row.shipping_available,
       negotiable: row.negotiable,
+      boostTier:
+        row.listing_boosts?.find(
+          (boost) =>
+            boost.status === "active" &&
+            (!boost.expires_at || new Date(boost.expires_at).getTime() > Date.now()),
+        )?.tier || null,
     };
   });
 }
