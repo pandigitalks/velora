@@ -27,6 +27,10 @@ type Note = { id:number; title:string; text:string; type:string; read:boolean; t
 type Order = { id:string; total:number; items:number[]; date:string; status:string };
 type ChatMessage = { mine:boolean; text:string; time:string };
 type Lang = "sq" | "en";
+type AccountProfile = {
+  id: string; email: string; fullName: string; username: string;
+  avatarUrl: string | null; city: string; sellerVerified: boolean; identityVerified: boolean;
+};
 type ListingDraft = {
   id:number; title:string; brand:string; category:string; condition:string; gender:string;
   size:string; retailPrice:number; price:number; image?:string; publishedAt:string;
@@ -315,8 +319,10 @@ function AppHeader({cartCount,noteCount,notes,setNotes,lang,setLang,signedIn,onS
   const router=useRouter(); const params=useSearchParams();
   const wantsAuth=Boolean(params.get("login"))&&!signedIn;
   const wantsSellLogin=params.get("login")==="sell"&&!signedIn;
+  const requestedNext=params.get("next");
+  const safeNext=requestedNext?.startsWith("/")&&!requestedNext.startsWith("//")?requestedNext:null;
   const profileRef=useRef<HTMLDivElement>(null);
-  const [term,setTerm]=useState(params.get("q")||""); const [menu,setMenu]=useState(false); const [profile,setProfile]=useState(false); const [auth,setAuth]=useState(wantsAuth); const [searchOpen,setSearchOpen]=useState(false); const [notifications,setNotifications]=useState(false); const [afterLogin,setAfterLogin]=useState<string|null>(wantsSellLogin?"/sell":null);
+  const [term,setTerm]=useState(params.get("q")||""); const [menu,setMenu]=useState(false); const [profile,setProfile]=useState(false); const [auth,setAuth]=useState(wantsAuth); const [searchOpen,setSearchOpen]=useState(false); const [notifications,setNotifications]=useState(false); const [afterLogin,setAfterLogin]=useState<string|null>(safeNext||(wantsSellLogin?"/sell":null));
   useEffect(()=>{
     const close=(e:MouseEvent)=>{if(profileRef.current&&!profileRef.current.contains(e.target as Node))setProfile(false)};
     const key=(e:KeyboardEvent)=>{if(e.key==="Escape"){setProfile(false);setMenu(false)}};
@@ -455,6 +461,19 @@ function MessagesPage(){
   return <main className="v2-page v2-messages"><div className={`v2-inbox v2-inbox-premium ${mobileChat?"chat-open":""}`}><aside><header><div><span>INBOX</span><h1>Mesazhet</h1></div><button className="v2-icon" aria-label="Cilësimet e mesazheve"><Settings/></button></header><label className="v2-inbox-search"><Search/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Kërko biseda"/></label><div className="v2-inbox-filter"><button className="active">Të gjitha <b>{chats.length}</b></button><button>Pa lexuar <b>1</b></button></div><div className="v2-conversation-list">{visible.map(c=>{const i=chats.indexOf(c);return <button key={c.name} className={i===active?"active":""} onClick={()=>{setActive(i);setMobileChat(true)}}><span className="v2-chat-avatar">{c.initials}<i className={c.online?"online":""}/></span><span><b>{c.name}<small>{c.time}</small></b><em>{c.item}</em><p>{(messages[i]?.at(-1)?.text)||c.seed}</p></span>{i===0&&<i className="v2-unread-dot"/>}</button>})}</div></aside><section><div className="v2-chat-head"><button className="v2-icon mobile-back" onClick={()=>setMobileChat(false)} aria-label="Kthehu te bisedat"><ArrowLeft/></button><span className="v2-chat-avatar">{chats[active].initials}<i className={chats[active].online?"online":""}/></span><span><b>{chats[active].name}<BadgeCheck/></b><small>{chats[active].online?"Aktiv tani":"Përgjigjet brenda 1 ore"}</small></span><Link href="/profile" className="v2-chat-profile">Profili<ChevronRight/></Link></div><div className="v2-chat-product"><ProductImage p={chats[active].img}/><span><small>PRODUKTI NË DISKUTIM</small><b>{chats[active].item}</b><strong>€{products[active].price.toLocaleString()}</strong></span><button className="v2-pill soft" onClick={()=>setText(`A do ta pranoje €${Math.round(products[active].price*.9)}?`)}><Tag/>Bëj ofertë</button></div><div className="v2-chat-body"><span className="v2-chat-day">Sot</span>{current.map((m,i)=><div key={i} className={m.mine?"mine":""}>{m.text}<small>{m.time}{m.mine&&" · Lexuar"}</small></div>)}</div><form className="v2-compose" onSubmit={e=>{e.preventDefault();send()}}><button type="button" aria-label="Bashkëngjit foto"><ImagePlus/></button><button type="button" aria-label="Shto ofertë" onClick={()=>setText(`A do ta pranoje €${Math.round(products[active].price*.9)}?`)}><Tag/></button><input value={text} onChange={e=>setText(e.target.value)} placeholder="Shkruaj një mesazh…"/><button aria-label="Dërgo mesazhin" className="send" disabled={!text.trim()}><Send/></button></form></section></div></main>
 }
 
+function DatabaseMessagesPage(){
+  type ConversationRow={id:string;buyer_id:string;seller_id:string;updated_at:string;buyer:{full_name:string|null;username:string|null}|null;seller:{full_name:string|null;username:string|null}|null;listing:{title:string;price:number}|null};
+  type MessageRow={id:string;conversation_id:string;sender_id:string;body:string;created_at:string;read_at:string|null};
+  const [userId,setUserId]=useState(""); const [conversations,setConversations]=useState<ConversationRow[]>([]); const [messages,setMessages]=useState<MessageRow[]>([]); const [active,setActive]=useState(""); const [text,setText]=useState(""); const [loading,setLoading]=useState(true); const [error,setError]=useState("");
+  useEffect(()=>{const load=async()=>{const supabase=createClient();const {data:{user}}=await supabase.auth.getUser();if(!user){setLoading(false);return}setUserId(user.id);const {data,error:conversationError}=await supabase.from("conversations").select("id,buyer_id,seller_id,updated_at,buyer:profiles!conversations_buyer_id_fkey(full_name,username),seller:profiles!conversations_seller_id_fkey(full_name,username),listing:listings(title,price)").order("updated_at",{ascending:false});if(conversationError){setError(conversationError.message);setLoading(false);return}const rows=(data||[]) as unknown as ConversationRow[];setConversations(rows);setActive(rows[0]?.id||"");setLoading(false)};void load()},[]);
+  useEffect(()=>{if(!active)return;const load=async()=>{const {data,error:messageError}=await createClient().from("messages").select("id,conversation_id,sender_id,body,created_at,read_at").eq("conversation_id",active).order("created_at");if(messageError){setError(messageError.message);return}setMessages((data||[]) as MessageRow[])};void load()},[active]);
+  const send=async()=>{const body=text.trim();if(!body||!active||!userId)return;setText("");const {data,error:sendError}=await createClient().from("messages").insert({conversation_id:active,sender_id:userId,body}).select("id,conversation_id,sender_id,body,created_at,read_at").single();if(sendError){setText(body);setError(sendError.message);return}setMessages(v=>[...v,data as MessageRow])};
+  if(loading)return <main className="v2-page"><div className="v2-auth-loading"><span>Duke ngarkuar mesazhet…</span></div></main>;
+  if(!conversations.length)return <main className="v2-page"><PageTitle eyebrow="INBOX" title="Mesazhet" text="Bisedat me blerës dhe shitës shfaqen këtu"/><Empty icon={<MessageCircle/>} title="Ende nuk ke mesazhe" text="Hap një produkt dhe kontakto shitësin për të nisur bisedën e parë." href="/explore" action="Eksploro produktet"/></main>;
+  const current=conversations.find(c=>c.id===active)||conversations[0];const other=current.buyer_id===userId?current.seller:current.buyer;const name=other?.full_name||other?.username||"Përdorues VELORA";const initials=name.split(/\s+/).map(x=>x[0]).join("").slice(0,2).toUpperCase();
+  return <main className="v2-page v2-messages"><div className="v2-inbox v2-inbox-premium"><aside><header><div><span>INBOX</span><h1>Mesazhet</h1></div></header><div className="v2-conversation-list">{conversations.map(c=>{const person=c.buyer_id===userId?c.seller:c.buyer;const label=person?.full_name||person?.username||"Përdorues VELORA";return <button key={c.id} className={c.id===active?"active":""} onClick={()=>setActive(c.id)}><span className="v2-chat-avatar">{label.split(/\s+/).map(x=>x[0]).join("").slice(0,2).toUpperCase()}</span><span><b>{label}</b><em>{c.listing?.title||"Bisedë private"}</em><p>{new Date(c.updated_at).toLocaleDateString("sq-AL")}</p></span></button>})}</div></aside><section><div className="v2-chat-head"><span className="v2-chat-avatar">{initials}</span><span><b>{name}</b><small>Bisedë e mbrojtur nga VELORA</small></span></div>{current.listing&&<div className="v2-chat-product"><span><small>PRODUKTI NË DISKUTIM</small><b>{current.listing.title}</b><strong>€{Number(current.listing.price).toLocaleString()}</strong></span></div>}<div className="v2-chat-body"><span className="v2-chat-day">Biseda</span>{messages.map(m=><div key={m.id} className={m.sender_id===userId?"mine":""}>{m.body}<small>{new Date(m.created_at).toLocaleTimeString("sq-AL",{hour:"2-digit",minute:"2-digit"})}</small></div>)}{error&&<small className="v2-auth-error">{error}</small>}</div><form className="v2-compose" onSubmit={e=>{e.preventDefault();void send()}}><input value={text} onChange={e=>setText(e.target.value)} placeholder="Shkruaj një mesazh…"/><button aria-label="Dërgo mesazhin" className="send" disabled={!text.trim()}><Send/></button></form></section></div></main>
+}
+
 function SavedPage({saved,toggle,add}:{saved:number[];toggle:(id:number)=>void;add:(id:number)=>void}){
   const items=products.filter(p=>saved.includes(p.id)); return <main className="v2-page"><PageTitle eyebrow="YOUR EDIT" title="Saved pieces" text={`${items.length} pieces waiting for you`}/>{items.length?<div className="v2-grid v2-results">{items.map(p=><ProductCard key={p.id} p={p} saved={saved} toggle={toggle} add={add}/>)}</div>:<Empty icon={<Heart/>} title="Nothing saved yet" text="Tap the heart on any piece to keep it here." href="/explore" action="Start discovering"/>}</main>
 }
@@ -490,10 +509,11 @@ function SettingsPage(){
   </section></div></main>
 }
 
-function ProfilePage({listings}:{listings:ListingDraft[]}){
+function ProfilePage({listings,account}:{listings:ListingDraft[];account:AccountProfile|null}){
   const path=usePathname(); const [tab,setTab]=useState("Wardrobe");
   if(path==="/dashboard")return <Dashboard listings={listings}/>;
-  return <main className="v2-page"><section className="v2-profile-head"><div className="v2-profile-avatar">AM<span><BadgeCheck/></span></div><div><span>TRUSTED SELLER · MEMBER SINCE 2024</span><h1>Arnis Mulliqi</h1><p>@arnis.archive · Pejë, Kosovo</p><div><b>4.9<small>Rating</small></b><b>248<small>Sold</small></b><b>1.8k<small>Followers</small></b><b>342<small>Following</small></b></div></div><aside><Link className="v2-pill dark" href="/dashboard"><LayoutDashboard/>Seller studio</Link><Link className="v2-pill outline" href="/settings"><Settings/></Link></aside></section><div className="v2-profile-trust"><span><ShieldCheck/>Identity verified</span><span><BadgeCheck/>Trusted seller</span><span><Zap/>Replies quickly</span></div><div className="v2-tabs">{["Wardrobe","Reviews","Sold","Collections"].map(x=><button key={x} className={tab===x?"active":""} onClick={()=>setTab(x)}>{x}</button>)}</div>{tab==="Wardrobe"?<><div className="v2-profile-listings">{listings.map((l,i)=><article key={i}>{l.image?<img src={l.image} alt={l.title}/>:<ProductImage p={products[0]}/>}<b>{l.title}</b><span>€{l.price.toLocaleString()}</span></article>)}</div><div className="v2-grid v2-results">{products.slice(0,4).map(p=><ProductCard key={p.id} p={p} saved={[]} toggle={()=>{}} add={()=>{}}/>)}</div></>:tab==="Reviews"?<Reviews/>:<Empty icon={tab==="Sold"?<Package/>:<Heart/>} title={`${tab} will appear here`} text={`Your ${tab.toLowerCase()} history is ready for live account data.`} href="/explore" action="Explore pieces"/>}</main>
+  const initials=(account?.fullName||account?.email||"V").split(/\s+/).map(x=>x[0]).join("").slice(0,2).toUpperCase();
+  return <main className="v2-page"><section className="v2-profile-head"><div className="v2-profile-avatar">{initials}{account?.identityVerified&&<span><BadgeCheck/></span>}</div><div><span>{account?.sellerVerified?"SHITËS I VERIFIKUAR":"ANËTAR I VELORA"}</span><h1>{account?.fullName||"Profili im"}</h1><p>{account?.username?`@${account.username}`:account?.email}{account?.city?` · ${account.city}`:""}</p><div><b>{listings.length}<small>Shpallje</small></b><b>0<small>Shitur</small></b><b>0<small>Vlerësime</small></b></div></div><aside><Link className="v2-pill dark" href="/dashboard"><LayoutDashboard/>Paneli i shitësit</Link><Link className="v2-pill outline" href="/settings"><Settings/></Link></aside></section><div className="v2-profile-trust"><span><ShieldCheck/>{account?.identityVerified?"Identitet i verifikuar":"Email i verifikuar"}</span>{account?.sellerVerified&&<span><BadgeCheck/>Shitës i verifikuar</span>}</div><div className="v2-tabs">{["Wardrobe","Reviews","Sold","Collections"].map(x=><button key={x} className={tab===x?"active":""} onClick={()=>setTab(x)}>{x}</button>)}</div>{tab==="Wardrobe"?(listings.length?<div className="v2-profile-listings">{listings.map((l,i)=><article key={i}>{l.image?<img src={l.image} alt={l.title}/>:<ProductImage p={products[0]}/>}<b>{l.title}</b><span>€{l.price.toLocaleString()}</span></article>)}</div>:<Empty icon={<Package/>} title="Ende nuk ke shpallje" text="Produktet që publikon shfaqen këtu." href="/sell" action="Shto produkt"/>):tab==="Reviews"?<Reviews/>:<Empty icon={tab==="Sold"?<Package/>:<Heart/>} title={`${tab} will appear here`} text={`Your ${tab.toLowerCase()} history is ready for live account data.`} href="/explore" action="Explore pieces"/>}</main>
 }
 
 function Reviews(){return <div className="v2-reviews">{[{n:"Sofia M.",t:"Perfect condition and beautifully packed.",r:5},{n:"Daniel K.",t:"Fast shipping, exactly as described.",r:5},{n:"Mila A.",t:"Excellent communication throughout.",r:5}].map(x=><article key={x.n}><div className="v2-avatar">{x.n[0]}</div><div><b>{x.n}</b><span>{Array.from({length:x.r}).map((_,i)=><Star key={i} fill="currentColor"/>)}</span><p>{x.t}</p></div></article>)}</div>}
@@ -604,6 +624,8 @@ export default function Marketplace(){
   const path=usePathname(); const router=useRouter();
   const [lang,setLang]=usePersistent<Lang>("velora-language","sq");
   const [signedIn,setSignedIn]=useState(false);
+  const [authReady,setAuthReady]=useState(false);
+  const [account,setAccount]=useState<AccountProfile|null>(null);
   const [saved,setSaved]=usePersistent<number[]>("velora-saved",[4]);
   const [cart,setCart]=usePersistent<CartLine[]>("velora-cart",[]);
   const [notes,setNotes]=usePersistent<Note[]>("velora-notes",seedNotes);
@@ -612,16 +634,28 @@ export default function Marketplace(){
   const listingCatalog=useMemo<Product[]>(()=>[...listings.map((l,i)=>({id:l.id||90000+i,name:l.title,brand:(l.brand||"VELORA USER").toUpperCase(),price:l.price,image:l.image||"/assets/bag-one.webp",position:"center",seller:"Arnis Archive",size:l.size||"Një madhësi",city:"Pejë",verified:false,label:"E re",category:l.category||"Bags",color:"—",condition:l.condition||"Mirë",authLevel:"none" as const})),...products],[listings]);
   useEffect(()=>{
     const supabase=createClient();
-    void supabase.auth.getSession().then(({data})=>setSignedIn(Boolean(data.session)));
-    const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>setSignedIn(Boolean(session)));
+    void supabase.auth.getUser().then(({data})=>{setSignedIn(Boolean(data.user));setAuthReady(true)});
+    const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>{setSignedIn(Boolean(session?.user));setAuthReady(true)});
     return()=>subscription.unsubscribe();
   },[]);
+  useEffect(()=>{
+    if(!signedIn){setAccount(null);return}
+    const load=async()=>{
+      const supabase=createClient();
+      const {data:{user}}=await supabase.auth.getUser();
+      if(!user)return;
+      const {data:profile}=await supabase.from("profiles").select("id,full_name,username,avatar_url,city,seller_verified,identity_verified").eq("id",user.id).maybeSingle();
+      setAccount({id:user.id,email:user.email||"",fullName:profile?.full_name||String(user.user_metadata?.full_name||user.email?.split("@")[0]||"Përdorues"),username:profile?.username||"",avatarUrl:profile?.avatar_url||null,city:profile?.city||"",sellerVerified:Boolean(profile?.seller_verified),identityVerified:Boolean(profile?.identity_verified)});
+    };
+    void load();
+  },[signedIn]);
   const clearPrivate=()=>{setSaved([]);setCart([]);setNotes([])};
-  const signIn=()=>{clearPrivate();setSignedIn(true)};
+  const signIn=()=>setSignedIn(true);
   const signOut=async()=>{await createClient().auth.signOut();clearPrivate();setSignedIn(false)};
   const privateSaved=signedIn?saved:[]; const privateCart=signedIn?cart:[]; const privateNotes=signedIn?notes:[];
-  const toggle=(id:number)=>{if(!signedIn)return;setSaved(saved.includes(id)?saved.filter(x=>x!==id):[...saved,id])};
-  const add=(id:number)=>{if(!signedIn)return;setCart(cart.some(x=>x.id===id)?cart.map(x=>x.id===id?{...x,qty:x.qty+1}:x):[...cart,{id,qty:1}])};
+  const requestLogin=()=>router.push(`/?login=account&next=${encodeURIComponent(path)}`);
+  const toggle=(id:number)=>{if(!signedIn){requestLogin();return}setSaved(saved.includes(id)?saved.filter(x=>x!==id):[...saved,id])};
+  const add=(id:number)=>{if(!signedIn){requestLogin();return}setCart(cart.some(x=>x.id===id)?cart.map(x=>x.id===id?{...x,qty:x.qty+1}:x):[...cart,{id,qty:1}])};
   const buy=(id:number)=>{add(id);router.push("/checkout")};
   const place=()=>{const total=cart.reduce((s,l)=>s+(products.find(p=>p.id===l.id)?.price||0)*l.qty,0);setOrders([{id:`VL-${9000+orders.length}`,total,items:cart.map(x=>x.id),date:new Date().toLocaleDateString("en-GB"),status:"Order confirmed"},...orders]);setCart([]);setNotes([{id:Date.now(),title:"Order confirmed",text:"Your protected payment was authorized.",type:"order",read:false,time:"Now"},...notes])};
   const id=Number(path.split("/").pop())||1; const hideShell=path==="/sell";
@@ -629,7 +663,7 @@ export default function Marketplace(){
   if(path==="/explore"||path==="/search")content=<ExplorePage saved={privateSaved} toggle={toggle} add={add} listings={signedIn?listings:[]}/>;
   else if(path.startsWith("/listing"))content=<ListingPage id={id} saved={privateSaved} toggle={toggle} add={add} buy={buy} catalog={signedIn?listingCatalog:products}/>;
   else if(path==="/sell")content=<SellPage signedIn={signedIn} publish={async p=>{await createListing(p);setListings([p,...listings])}}/>;
-  else if(path==="/messages")content=<MessagesPage/>;
+  else if(path==="/messages")content=<DatabaseMessagesPage/>;
   else if(path==="/saved")content=<SavedPage saved={privateSaved} toggle={toggle} add={add}/>;
   else if(path==="/cart")content=<CartPage cart={privateCart} setCart={setCart} checkout={()=>router.push("/checkout")}/>;
   else if(path==="/checkout")content=<CheckoutPage cart={privateCart} place={place}/>;
@@ -646,7 +680,8 @@ export default function Marketplace(){
   else if(path.startsWith("/stories/"))content=<StoryPage id={path.split("/").pop()||"1"}/>;
   else if(path==="/professional-sellers")content=<ProfessionalSellersPage/>;
   else if(policies[path])content=<PolicyPage path={path}/>;
-  else if(path==="/profile"||path==="/dashboard")content=<ProfilePage listings={signedIn?listings:[]}/>;
+  else if(path==="/profile"||path==="/dashboard")content=<ProfilePage listings={signedIn?listings:[]} account={account}/>;
   else content=<HomePage saved={privateSaved} toggle={toggle} add={add} signedIn={signedIn}/>;
+  if(!authReady)return <main className="v2-auth-loading" aria-live="polite"><Brand/><span>Duke kontrolluar llogarinë…</span></main>;
   return <Localize lang={lang}><div className="v2-app" key={lang}>{!hideShell&&<AppHeader cartCount={privateCart.reduce((s,x)=>s+x.qty,0)} noteCount={privateNotes.filter(n=>!n.read).length} notes={privateNotes} setNotes={setNotes} lang={lang} setLang={setLang} signedIn={signedIn} onSignIn={signIn} onSignOut={signOut}/>}<AnimatePresence mode="wait"><motion.div key={`${path}-${lang}`} initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:.18}}>{content}</motion.div></AnimatePresence>{!hideShell&&<Footer/>}<MobileNav cart={privateCart.reduce((s,x)=>s+x.qty,0)} signedIn={signedIn}/></div></Localize>
 }
