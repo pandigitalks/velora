@@ -193,7 +193,7 @@ const sqText: Record<string, string> = {
     "Luks i autentikuar dhe ikona moderne, të përzgjedhura nga njerëz me shije të veçantë.",
   "Shop the edit": "Bli përzgjedhjen",
   "Sell a piece": "Shit një produkt",
-  "VELORA AUTHENTICATED": "AUTENTIKUAR NGA VELORA",
+  "CLOZER AUTHENTICATED": "AUTENTIKUAR NGA CLOZER",
   "Expert reviewed, buyer protected":
     "Kontrolluar nga ekspertët, blerësi i mbrojtur",
   "SHOP BY WORLD": "EKSPLORO SIPAS KATEGORISË",
@@ -219,7 +219,7 @@ const sqText: Record<string, string> = {
   "Suggested range €1,180–€1,340": "Çmimi i sugjeruar €1,180–€1,340",
   DISCOVER: "EKSPLORO",
   "Pieces worth finding": "Pjesë që ia vlen t’i zbulosh",
-  "Search with VELORA AI": "Kërko me VELORA AI",
+  "Search with CLOZER AI": "Kërko me CLOZER AI",
   "Try “a quiet luxury bag under €800”": "Provo “çantë elegante nën 800€”",
   Filters: "Filtrat",
   Curated: "Të përzgjedhura",
@@ -235,9 +235,9 @@ const sqText: Record<string, string> = {
   "Authenticated only": "Vetëm të autentikuara",
   "Expert-inspected pieces": "Produkte të kontrolluara nga ekspertët",
   "Reset filters": "Rivendos filtrat",
-  "VELORA checked": "Kontrolluar nga VELORA",
+  "CLOZER checked": "Kontrolluar nga CLOZER",
   "Buyer protection included": "Mbrojtja e blerësit përfshihet",
-  "VELORA Authentication": "Autentikimi VELORA",
+  "CLOZER Authentication": "Autentikimi CLOZER",
   "Inspected before it reaches you": "Kontrollohet para se të arrijë te ti",
   "Make an offer": "Bëj ofertë",
   "Add to bag": "Shto në shportë",
@@ -494,8 +494,8 @@ const sqText: Record<string, string> = {
   "Authenticated luxury": "Luks i autentikuar",
   Subscribe: "Abonohu",
   "Newsletter email": "Emaili për buletin",
-  "Personal details connected to your VELORA profile.":
-    "Të dhënat personale të lidhura me profilin tënd VELORA.",
+  "Personal details connected to your CLOZER profile.":
+    "Të dhënat personale të lidhura me profilin tënd CLOZER.",
   "Save changes": "Ruaj ndryshimet",
   "Control visibility and account protection.":
     "Menaxho dukshmërinë dhe mbrojtjen e llogarisë.",
@@ -528,8 +528,8 @@ const sqText: Record<string, string> = {
   Message: "Mesazhi",
   "Send message": "Dërgo mesazhin",
   "Message sent": "Mesazhi u dërgua",
-  "Thank you. The VELORA team will reply to your email shortly.":
-    "Faleminderit. Ekipi VELORA do të përgjigjet së shpejti në emailin tënd.",
+  "Thank you. The CLOZER team will reply to your email shortly.":
+    "Faleminderit. Ekipi CLOZER do të përgjigjet së shpejti në emailin tënd.",
   "HELP CENTER": "QENDRA E NDIHMËS",
   "Frequently asked questions": "Pyetjet më të shpeshta",
   "Everything you need to buy and sell with confidence.":
@@ -538,14 +538,14 @@ const sqText: Record<string, string> = {
   FAQ: "Pyetjet e shpeshta",
   "Sign out": "Dil nga llogaria",
   "Sign in": "Kyçu",
-  "VELORA Support": "Mbështetja VELORA",
+  "CLOZER Support": "Mbështetja CLOZER",
   "Monday–Friday · 09:00–18:00 CET": "E hënë–e premte · 09:00–18:00 CET",
   "Order question": "Pyetje për porosinë",
   Selling: "Shitja",
   "How can we help?": "Si mund të të ndihmojmë?",
   "Send another": "Dërgo një mesazh tjetër",
-  "How does VELORA authentication work?":
-    "Si funksionon autentikimi në VELORA?",
+  "How does CLOZER authentication work?":
+    "Si funksionon autentikimi në CLOZER?",
   "Eligible luxury products are first sent to our specialists. They inspect identity, materials and condition before forwarding the item to the buyer.":
     "Produktet luksoze të pranueshme dërgohen fillimisht te specialistët tanë. Ata kontrollojnë identitetin, materialet dhe gjendjen para se produkti t’i dërgohet blerësit.",
   "When does the seller receive payment?": "Kur e pranon shitësi pagesën?",
@@ -583,7 +583,7 @@ const sqText: Record<string, string> = {
   "Sell a piece": "Shit një produkt",
   "Expert reviewed, buyer protected":
     "Kontrolluar nga ekspertët, blerësi i mbrojtur",
-  "VELORA AUTHENTICATED": "AUTENTIKUAR NGA VELORA",
+  "CLOZER AUTHENTICATED": "AUTENTIKUAR NGA CLOZER",
   "THE AUTHENTICATED EDIT": "PËRZGJEDHJA E AUTENTIKUAR",
   "Icons, then": "Ikona, dje",
   "and now.": "dhe sot.",
@@ -1301,8 +1301,8 @@ function AuthBadge({ p, compact = false }: { p: Product; compact?: boolean }) {
 
 function Brand() {
   return (
-    <Link href="/" className="v2-brand" aria-label="VELORA home">
-      VELORA<span>®</span>
+    <Link href="/" className="v2-brand" aria-label="CLOZER home">
+      CLOZER<span>®</span>
     </Link>
   );
 }
@@ -1401,7 +1401,7 @@ function AuthModal({
           <X />
         </button>
         <Brand />
-        <span>VELORA ACCOUNT</span>
+        <span>CLOZER ACCOUNT</span>
         <h1>{mode === "login" ? "Mirë se vjen." : "Krijo llogarinë."}</h1>
         <p>
           {mode === "login"
@@ -2165,7 +2165,7 @@ function HomePage({
           playsInline
           preload="auto"
           poster="/assets/velora-hero-poster.jpg"
-          aria-label="VELORA fashion editorial"
+          aria-label="CLOZER fashion editorial"
           onCanPlay={(event) =>
             event.currentTarget.play().catch(() => undefined)
           }
@@ -2195,7 +2195,7 @@ function HomePage({
         <div className="v2-trust">
           <ShieldCheck />
           <span>
-            <b>VELORA AUTHENTICATED</b>
+            <b>CLOZER AUTHENTICATED</b>
             <small>Expert reviewed, buyer protected</small>
           </span>
         </div>
@@ -2353,7 +2353,7 @@ function HomePage({
       <section className="v2-story-strip v2-section">
         <div className="v2-section-head">
           <div>
-            <span>VELORA STORIES</span>
+            <span>CLOZER STORIES</span>
             <h2>Moda përtej produktit</h2>
           </div>
           <Link href="/stories">
@@ -2438,7 +2438,7 @@ function ExplorePage({
       listings.map((l, i) => ({
         id: l.id || 90000 + i,
         name: l.title,
-        brand: (l.brand || "VELORA USER").toUpperCase(),
+        brand: (l.brand || "CLOZER USER").toUpperCase(),
         price: l.price,
         image: l.image || "/assets/bag-one.webp",
         position: "center",
@@ -2628,7 +2628,7 @@ function ExplorePage({
           <button onClick={() => setAiSearch(true)}>
             <Sparkles />
             <span>
-              <b>Kërko me VELORA AI</b>
+              <b>Kërko me CLOZER AI</b>
               <small>Provo “çantë elegante nën 800€”</small>
             </span>
             <ArrowRight />
@@ -3013,7 +3013,7 @@ function ExplorePage({
                 <X />
               </button>
               <Sparkles />
-              <span>VELORA AI SEARCH</span>
+              <span>CLOZER AI SEARCH</span>
               <h2>Përshkruaje atë që kërkon.</h2>
               <p>Kërko me stil, buxhet, brend, ngjyrë ose rast përdorimi.</p>
               <div>
@@ -3106,7 +3106,7 @@ function ListingPage({
   const share = async () => {
     const payload = {
       title: `${p.brand} · ${p.name}`,
-      text: `Shiko këtë produkt në VELORA: ${p.name}`,
+      text: `Shiko këtë produkt në CLOZER: ${p.name}`,
       url: window.location.href,
     };
     try {
@@ -3139,7 +3139,7 @@ function ListingPage({
           <button
             onClick={() =>
               setNotice(
-                "Raporti u hap. Ekipi VELORA do ta shqyrtojë këtë shpallje.",
+                "Raporti u hap. Ekipi CLOZER do ta shqyrtojë këtë shpallje.",
               )
             }
           >
@@ -3414,7 +3414,7 @@ function ListingPage({
             <h3>{p.seller}</h3>
             <p>
               {p.verified
-                ? "Identiteti i këtij shitësi është verifikuar nga VELORA."
+                ? "Identiteti i këtij shitësi është verifikuar nga CLOZER."
                 : "Shiko profilin, listimet dhe informacionin publik të shitësit para porosisë."}
             </p>
             <Link href={sellerHref(p)}>
@@ -3433,7 +3433,7 @@ function ListingPage({
           </span>
         </div>
         <p>
-          Ky është çmimi i vendosur nga shitësi. VELORA nuk shfaq histori ose
+          Ky është çmimi i vendosur nga shitësi. CLOZER nuk shfaq histori ose
           krahasime të paverifikuara. Tarifat dhe dërgesa paraqiten qartë para
           pagesës.
         </p>
@@ -3699,7 +3699,7 @@ function ListingPage({
                 </article>
               </div>
               <Link className="v2-auth-learn" href="/authentication">
-                Si funksionon sistemi VELORA?
+                Si funksionon sistemi CLOZER?
                 <ArrowRight />
               </Link>
             </motion.div>
@@ -4720,7 +4720,7 @@ function DatabaseMessagesPage() {
   const current =
     conversations.find((c) => c.id === active) || conversations[0];
   const other = current.buyer_id === userId ? current.seller : current.buyer;
-  const name = other?.full_name || other?.username || "Përdorues VELORA";
+  const name = other?.full_name || other?.username || "Përdorues CLOZER";
   const initials = name
     .split(/\s+/)
     .map((x) => x[0])
@@ -4741,7 +4741,7 @@ function DatabaseMessagesPage() {
             {conversations.map((c) => {
               const person = c.buyer_id === userId ? c.seller : c.buyer;
               const label =
-                person?.full_name || person?.username || "Përdorues VELORA";
+                person?.full_name || person?.username || "Përdorues CLOZER";
               return (
                 <button
                   key={c.id}
@@ -4771,7 +4771,7 @@ function DatabaseMessagesPage() {
             <span className="v2-chat-avatar">{initials}</span>
             <span>
               <b>{name}</b>
-              <small>Bisedë e mbrojtur nga VELORA</small>
+              <small>Bisedë e mbrojtur nga CLOZER</small>
             </span>
           </div>
           {current.listing && (
@@ -5282,7 +5282,7 @@ function SettingsPage() {
           ) : section === "Account" ? (
             <>
               <h2>Account</h2>
-              <p>Personal details connected to your VELORA profile.</p>
+              <p>Personal details connected to your CLOZER profile.</p>
               <div className="v2-setting-card">
                 <label>
                   Full name
@@ -5388,7 +5388,7 @@ function ProfilePage({
           <span>
             {account?.sellerVerified
               ? "SHITËS I VERIFIKUAR"
-              : "ANËTAR I VELORA"}
+              : "ANËTAR I CLOZER"}
           </span>
           <h1>{account?.fullName || "Profili im"}</h1>
           <p>
@@ -5515,7 +5515,7 @@ function SellerProfilePage({
         <div>
           <span>PROFIL PUBLIK I SHITËSIT</span>
           <h1>{seller}</h1>
-          <p>Shitës në VELORA · përgjigjet zakonisht brenda një ore</p>
+          <p>Shitës në CLOZER · përgjigjet zakonisht brenda një ore</p>
           <div>
             <b>
               {sellerProducts.length}
@@ -5542,7 +5542,7 @@ function SellerProfilePage({
       <div className="v2-profile-trust">
         <span>
           <ShieldCheck />
-          Pagesat mbrohen nga VELORA
+          Pagesat mbrohen nga CLOZER
         </span>
       </div>
       <div className="v2-tabs">
@@ -6055,8 +6055,8 @@ function ContactPage() {
       <div className="v2-contact-layout">
         <aside>
           <Mail />
-          <h2>VELORA Support</h2>
-          <a href="mailto:support@velora.market">support@velora.market</a>
+          <h2>CLOZER Support</h2>
+          <a href="mailto:support@clozer.shop">support@clozer.shop</a>
           <p>Monday–Friday · 09:00–18:00 CET</p>
           <Link href="/faq">
             Frequently asked questions
@@ -6067,7 +6067,7 @@ function ContactPage() {
           <section className="v2-contact-success">
             <Check />
             <h2>Message sent</h2>
-            <p>Thank you. The VELORA team will reply to your email shortly.</p>
+            <p>Thank you. The CLOZER team will reply to your email shortly.</p>
             <button className="v2-pill outline" onClick={() => setSent(false)}>
               Send another
             </button>
@@ -6123,7 +6123,7 @@ function FaqPage() {
   const [open, setOpen] = useState(0);
   const items = [
     [
-      "How does VELORA authentication work?",
+      "How does CLOZER authentication work?",
       "Eligible luxury products are first sent to our specialists. They inspect identity, materials and condition before forwarding the item to the buyer.",
     ],
     [
@@ -6338,7 +6338,7 @@ function StoriesPage() {
   return (
     <main className="v2-page v2-stories-page">
       <PageTitle
-        eyebrow="VELORA STORIES"
+        eyebrow="CLOZER STORIES"
         title="Moda përtej produktit."
         text="Histori, udhëzues dhe këndvështrime nga bota e modës së kuruar."
       />
@@ -6394,7 +6394,7 @@ function StoryPage({ id }: { id: string }) {
           Një blerje e mirë fillon me informacion të qartë dhe pritshmëri reale.
         </blockquote>
         <p>
-          VELORA e ndërton këtë transparencë në çdo hap: nga publikimi i
+          CLOZER e ndërton këtë transparencë në çdo hap: nga publikimi i
           produktit, te oferta, autentikimi, pagesa e mbrojtur dhe dorëzimi.
         </p>
       </article>
@@ -6415,7 +6415,7 @@ function ProfessionalSellersPage() {
     <main className="v2-pro-page">
       <section className="v2-pro-hero">
         <div>
-          <span>VELORA FOR BUSINESS</span>
+          <span>CLOZER FOR BUSINESS</span>
           <h1>
             Dyqani yt.
             <br />
@@ -6484,7 +6484,7 @@ function ProfessionalSellersPage() {
           <div className="v2-contact-success">
             <Check />
             <h2>Aplikimi u pranua</h2>
-            <p>Ekipi VELORA do të kontaktojë biznesin pas shqyrtimit.</p>
+            <p>Ekipi CLOZER do të kontaktojë biznesin pas shqyrtimit.</p>
           </div>
         ) : (
           <form
@@ -6528,7 +6528,7 @@ const policies: Record<string, [string, string, string[]]> = {
   "/terms": [
     "KUSHTET",
     "Kushtet e përdorimit",
-    "Rregullat që udhëheqin përdorimin e VELORA-s.",
+    "Rregullat që udhëheqin përdorimin e CLOZER-s.",
     [
       "Llogaria dhe përgjegjësia",
       "Blerjet dhe pagesat",
@@ -6576,7 +6576,7 @@ const policies: Record<string, [string, string, string[]]> = {
   "/prohibited-items": [
     "SIGURIA",
     "Produktet e ndaluara",
-    "Çfarë nuk mund të shitet në VELORA.",
+    "Çfarë nuk mund të shitet në CLOZER.",
     [
       "Falsifikimet",
       "Produktet e vjedhura",
@@ -6614,7 +6614,7 @@ function PolicyPage({ path }: { path: string }) {
           <div>
             <h2>{x}</h2>
             <p>
-              VELORA zbaton rregulla të qarta, transparente dhe të barabarta për
+              CLOZER zbaton rregulla të qarta, transparente dhe të barabarta për
               blerësit, shitësit dhe dyqanet. Detajet përfundimtare përshtaten
               me juridiksionin, shërbimet e pagesës dhe partnerët logjistikë.
             </p>
@@ -6667,14 +6667,14 @@ function AuthenticationPage({ lang }: { lang: Lang }) {
   const journey = sq
     ? [
         "Pagesa mbahet në escrow",
-        "Produkti shkon në qendrën VELORA",
+        "Produkti shkon në qendrën CLOZER",
         "Eksperti kontrollon identitetin dhe gjendjen",
         "Vendoset etiketa e sigurisë",
         "Produkti dërgohet; pagesa lirohet",
       ]
     : [
         "Payment is held in escrow",
-        "Item ships to a VELORA center",
+        "Item ships to a CLOZER center",
         "Expert checks identity and condition",
         "Security tag is attached",
         "Item ships; payment is released",
@@ -6683,7 +6683,7 @@ function AuthenticationPage({ lang }: { lang: Lang }) {
     <main className="v2-page v2-auth-page">
       <section className="v2-auth-hero">
         <div>
-          <span>VELORA TRUST SYSTEM</span>
+          <span>CLOZER TRUST SYSTEM</span>
           <h1>
             {sq
               ? "Besimi ndërtohet me prova."
@@ -6861,7 +6861,7 @@ function CertificatePage({ lang }: { lang: Lang }) {
   return (
     <main className="v2-page v2-certificate-page">
       <PageTitle
-        eyebrow="VELORA CERTIFICATE"
+        eyebrow="CLOZER CERTIFICATE"
         title={sq ? "Verifiko certifikatën" : "Verify certificate"}
         text={
           sq
@@ -6896,8 +6896,8 @@ function CertificatePage({ lang }: { lang: Lang }) {
             <h1>ROLEX Oyster-style perpetual 36</h1>
             <p>
               {sq
-                ? "Autentifikuar fizikisht më 28 korrik 2026 në Qendrën VELORA Milano."
-                : "Physically authenticated on 28 July 2026 at VELORA Milan Center."}
+                ? "Autentifikuar fizikisht më 28 korrik 2026 në Qendrën CLOZER Milano."
+                : "Physically authenticated on 28 July 2026 at CLOZER Milan Center."}
             </p>
             <div className="v2-certificate-data">
               {[
@@ -6985,7 +6985,7 @@ function AuthCenterPage({ lang }: { lang: Lang }) {
     <main className="v2-auth-center">
       <header>
         <div>
-          <span>VELORA AUTHENTICATION CENTER</span>
+          <span>CLOZER AUTHENTICATION CENTER</span>
           <h1>{sq ? "Qendra e kontrollit" : "Review command center"}</h1>
           <p>
             {sq
@@ -7141,7 +7141,7 @@ function Footer() {
             "Produktet e ndaluara",
           ],
           ["Ndihmë", "FAQ", "Kontakt", "Kthimet", "Dërgesa"],
-          ["VELORA", "Histori", "Rreth nesh", "Privatësia", "Kushtet"],
+          ["CLOZER", "Histori", "Rreth nesh", "Privatësia", "Kushtet"],
         ].map((col) => (
           <section key={col[0]}>
             <b>{col[0]}</b>
@@ -7189,7 +7189,7 @@ function Footer() {
         ))}
       </div>
       <div>
-        <span>© 2026 VELORA Marketplace · Demo</span>
+        <span>© 2026 CLOZER Marketplace · Demo</span>
         <nav>
           <Link href="/privacy">Privatësia</Link>
           <Link href="/terms">Kushtet</Link>
@@ -7273,7 +7273,7 @@ export default function Marketplace() {
         image: listing.image || "/assets/bag-one.webp",
         images: listing.images,
         position: "center",
-        seller: account?.fullName || "Shitës VELORA",
+        seller: account?.fullName || "Shitës CLOZER",
         sellerSlug: account?.username || undefined,
         sellerAvatar: account?.avatarUrl || null,
         size: listing.size || "Një madhësi",
