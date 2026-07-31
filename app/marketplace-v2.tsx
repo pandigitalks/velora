@@ -53,7 +53,7 @@ import {
   WandSparkles,
   X,
 } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createClient } from "../lib/supabase/client";
 import {
   createListing,
@@ -2180,68 +2180,22 @@ function HomePage({
   signedIn: boolean;
   boosted: Product[];
 }) {
-  const heroVideo = useRef<HTMLVideoElement>(null);
-  useEffect(() => {
-    const resumeHeroVideo = () => {
-      if (document.visibilityState === "visible")
-        heroVideo.current?.play().catch(() => undefined);
-    };
-    heroVideo.current?.play().catch(() => undefined);
-    document.addEventListener("visibilitychange", resumeHeroVideo);
-    window.addEventListener("focus", resumeHeroVideo);
-    return () => {
-      document.removeEventListener("visibilitychange", resumeHeroVideo);
-      window.removeEventListener("focus", resumeHeroVideo);
-    };
-  }, []);
-
   return (
     <main>
-      <section className="v2-hero">
-        <video
-          ref={heroVideo}
-          className="v2-hero-video"
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="auto"
-          poster="/assets/velora-hero-poster.jpg"
-          aria-label="CLOZER fashion editorial"
-          onCanPlay={(event) =>
-            event.currentTarget.play().catch(() => undefined)
-          }
-        >
-          <source src="/assets/velora-hero.mp4" type="video/mp4" />
-        </video>
-        <div className="v2-hero-overlay" />
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="v2-hero-copy"
-        >
-          <span>CLOZER · THE NEW EDIT</span>
-          <h1>Pjesë që<br/><i>mbeten.</i></h1>
-          <p>Një përzgjedhje e kuruar e modës së njohur, e verifikuar me kujdes dhe gati për kapitullin e radhës.</p>
+      <section className="v2-new-hero">
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="v2-new-hero-copy">
+          <span>CLOZER · CURATED RESALE</span>
+          <h1>Moda e mirë<br/><i>vazhdon.</i></h1>
+          <p>Pjesë ikonike, të verifikuara dhe të zgjedhura me kujdes për jetën e tyre të dytë.</p>
           <div>
-            <Link href="/explore" className="v2-pill light">
-              Eksploro edit-in
-              <ArrowRight />
-            </Link>
-            <Link
-              href={signedIn ? "/sell" : "/?login=sell"}
-              className="v2-pill glass"
-            >
-              Shit një pjesë
-            </Link>
+            <Link href="/explore" className="v2-pill dark">Eksploro koleksionin <ArrowRight /></Link>
+            <Link href={signedIn ? "/sell" : "/?login=sell"} className="v2-text-link">Shit një pjesë <ArrowRight /></Link>
           </div>
+          <aside><ShieldCheck/><span><b>E VERIFIKUAR</b><small>Kontrolluar nga ekspertët CLOZER</small></span></aside>
         </motion.div>
-        <div className="v2-trust">
-          <ShieldCheck />
-          <span>
-            <b>VERIFIKUAR NGA CLOZER</b>
-            <small>E kontrolluar me kujdes · blerje e mbrojtur</small>
-          </span>
+        <div className="v2-new-hero-art">
+          <img className="v2-new-hero-main" src="/assets/blazer-one.webp" alt="CLOZER fashion edit" />
+          <div className="v2-new-hero-card"><img src="/assets/bag-one.webp" alt="Përzgjedhje CLOZER"/><span>THE WEEKLY EDIT<br/><b>01 / 06</b></span></div>
         </div>
       </section>
       <section className="v2-section v2-home-boost">
