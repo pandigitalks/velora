@@ -1,12 +1,13 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "../../lib/supabase/client";
 import {
-  Activity, BadgeCheck, Bell, Boxes, ChevronDown, CircleDollarSign,
-  Command, FileCheck2, Gauge, LayoutDashboard, ListFilter, Menu, MessageSquare,
-  MoreHorizontal, PackageCheck, Search, Settings, ShieldCheck, ShoppingBag,
+  Activity, BadgeCheck, Boxes, ChevronDown, CircleDollarSign,
+  Command, FileCheck2, Gauge, LayoutDashboard, Menu, MessageSquare,
+  MoreHorizontal, PackageCheck, Search, Settings, ShieldCheck, ShoppingBag, Download, RefreshCw, SlidersHorizontal,
   Sparkles, TrendingUp, Users, X,
 } from "lucide-react";
 import "./admin.css";
@@ -25,7 +26,7 @@ const sections = [
   ["seller-applications", "Aplikimet e shitësve", FileCheck2],
   ["listings", "Listimet", ShoppingBag], ["orders", "Porositë", PackageCheck],
   ["messages", "Mesazhet", MessageSquare], ["authenticity", "Autenticiteti", ShieldCheck],
-  ["catalog", "Katalogu", Boxes],
+  ["catalog", "Katalogu", Boxes], ["activity", "Aktiviteti", Activity], ["settings", "Konfigurimi", Settings],
 ] as const;
 
 const money = (value: number) => new Intl.NumberFormat("sq-AL", { style: "currency", currency: "EUR" }).format(value || 0);
@@ -40,16 +41,24 @@ export default function AdminDashboard({ initialData, initialModerationQueue, in
   const [sellerApplications, setSellerApplications] = useState(initialSellerApplications);
   const [moderating, setModerating] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [selected, setSelected] = useState<Row | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const data = initialData;
   const m = data.metrics || {};
   const title = sections.find(([id]) => id === active)?.[1] || "Pasqyra";
 
   const rows = useMemo(() => {
     const source = active === "catalog" ? [...(data.categories || []), ...(data.brands || [])] : active === "seller-applications" ? sellerApplications : ((data as any)[active] || []);
-    if (!query.trim()) return source;
+    const filtered = statusFilter === "all" ? source : source.filter((row: Row) => String(row.status || "").toLowerCase() === statusFilter);
+    if (!query.trim()) return filtered;
     const q = query.toLowerCase();
-    return source.filter((row: Row) => JSON.stringify(row).toLowerCase().includes(q));
-  }, [active, data, query, sellerApplications]);
+    return filtered.filter((row: Row) => JSON.stringify(row).toLowerCase().includes(q));
+  }, [active, data, query, sellerApplications, statusFilter]);
+  const refresh = () => { setRefreshing(true); window.setTimeout(() => window.location.reload(), 250); };
+  useEffect(() => { const timer = window.setInterval(refresh, 60000); return () => window.clearInterval(timer); }, []);
+  const exportCsv = () => { const columns = Array.from(new Set(rows.flatMap(row => Object.keys(row)))); const csv = [columns.join(","), ...rows.map(row => columns.map(key => JSON.stringify(row[key] ?? "")).join(","))].join("\n"); const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([csv], {type:"text/csv"})); link.download = `clozer-${active}.csv`; link.click(); URL.revokeObjectURL(link.href); };
 
   return <div className="admin-shell">
     <aside className={`admin-sidebar ${sidebar ? "is-open" : ""}`}>
@@ -58,8 +67,8 @@ export default function AdminDashboard({ initialData, initialModerationQueue, in
         <p>OPERACIONET</p>
         {sections.map(([id, text, Icon]) => <button key={id} className={active === id ? "active" : ""} onClick={() => { setActive(id); setSidebar(false); }}><Icon size={18}/><span>{text}</span>{id === "listings" && moderationQueue.length > 0 ? <b>{moderationQueue.length}</b> : id === "seller-applications" && sellerApplications.length > 0 ? <b>{sellerApplications.length}</b> : id === "authenticity" && m.pending_authenticity > 0 ? <b>{m.pending_authenticity}</b> : null}</button>)}
         <p>SISTEMI</p>
-        <button><Activity size={18}/><span>Aktiviteti</span></button>
-        <button><Settings size={18}/><span>Konfigurimi</span></button>
+        <button className={active === "activity" ? "active" : ""} onClick={() => setActive("activity")}><Activity size={18}/><span>Aktiviteti</span></button>
+        <button className={active === "settings" ? "active" : ""} onClick={() => setActive("settings")}><Settings size={18}/><span>Konfigurimi</span></button>
       </nav>
       <div className="admin-user"><div className="avatar">{(admin.full_name || admin.username || "A")[0]}</div><div><strong>{admin.full_name || admin.username || "Administrator"}</strong><small>Super Admin</small></div><ChevronDown size={16}/></div>
     </aside>
@@ -68,12 +77,12 @@ export default function AdminDashboard({ initialData, initialModerationQueue, in
       <header className="admin-topbar">
         <button className="mobile-menu" onClick={() => setSidebar(true)}><Menu/></button>
         <div className="admin-search"><Search size={18}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Kërko në tërë platformën..."/><kbd>⌘ K</kbd></div>
-        <div className="top-actions"><button><Bell size={19}/><i/></button><Link href="/">Shiko faqen</Link></div>
+        <div className="top-actions"><button aria-label="Rifresko panelin" onClick={refresh} disabled={refreshing}><RefreshCw size={19}/></button><Link href="/">Shiko faqen</Link></div>
       </header>
       <div className="admin-content">
         <div className="page-heading"><div><p><Command size={14}/> ADMIN / {active.toUpperCase()}</p><h1>{title}</h1><span>Kontroll i plotë dhe të dhëna në kohë reale për Clozer.</span></div><div className="live"><i/> LIVE <small>Përditësuar {new Date(data.generated_at).toLocaleTimeString("sq-AL", {hour:"2-digit",minute:"2-digit"})}</small></div></div>
         {notice && <div className="moderation-notice">{notice}</div>}
-        {active === "overview" ? <Overview data={data} /> : active === "seller-applications" ? <SellerApplications rows={rows} busy={moderating} onReview={async (application, decision) => {
+        {active === "overview" ? <Overview data={data} /> : active === "activity" ? <ActivityPanel data={data} /> : active === "settings" ? <SettingsPanel /> : active === "seller-applications" ? <SellerApplications rows={rows} busy={moderating} onReview={async (application, decision) => {
           const note = decision === "rejected" ? window.prompt("Shkruaj arsyen e refuzimit:")?.trim() || "" : "";
           if (decision === "rejected" && !note) return;
           setModerating(application.user_id);
@@ -83,7 +92,7 @@ export default function AdminDashboard({ initialData, initialModerationQueue, in
           if (error) { setNotice(`Gabim: ${error.message}`); return; }
           setSellerApplications(current => current.filter(item => item.user_id !== application.user_id));
           setNotice(decision === "approved" ? "Shitësi u aprovua dhe paneli u aktivizua." : "Aplikimi u refuzua.");
-        }} /> : <DataSection type={active} rows={rows} query={query} moderationQueue={moderationQueue} moderating={moderating} onModerate={async (listing, status) => {
+        }} /> : <DataSection type={active} rows={rows} query={query} moderationQueue={moderationQueue} moderating={moderating} filterOpen={filterOpen} statusFilter={statusFilter} setFilterOpen={setFilterOpen} setStatusFilter={setStatusFilter} onExport={exportCsv} onSelect={setSelected} onModerate={async (listing, status) => {
           let note = "";
           if (status !== "active") {
             note = window.prompt(status === "changes_requested" ? "Çfarë duhet të ndryshojë shitësi?" : "Shkruaj arsyen e refuzimit:")?.trim() || "";
@@ -96,7 +105,7 @@ export default function AdminDashboard({ initialData, initialModerationQueue, in
           if (error) { setNotice(`Gabim: ${error.message}`); return; }
           setModerationQueue(current => current.filter(item => item.id !== listing.id));
           setNotice(status === "active" ? "Produkti u aprovua dhe u publikua." : status === "changes_requested" ? "Kërkesa për ndryshime iu dërgua shitësit." : "Produkti u refuzua dhe shitësi u njoftua.");
-        }} />}
+        }} />}{selected && <ActionPanel row={selected} type={active} onClose={() => setSelected(null)} onDone={(message) => {setNotice(message); setSelected(null); refresh();}} />}
       </div>
     </main>
   </div>;
@@ -128,16 +137,16 @@ function Overview({ data }: { data: Snapshot }) {
 function PanelTitle({ icon: Icon, title, subtitle }: any) { return <div className="panel-title"><div><Icon size={18}/><span><strong>{title}</strong><small>{subtitle}</small></span></div><button><MoreHorizontal/></button></div>; }
 function Health({ label: text, value, tone }: any) { return <div className="health-row"><span><i className={tone}/>{text}</span><strong>{value}</strong></div>; }
 
-function DataSection({ type, rows, moderationQueue = [], moderating, onModerate }: { type: string; rows: Row[]; query: string; moderationQueue?: Row[]; moderating?: string | null; onModerate?: (listing: Row, status: "active" | "changes_requested" | "rejected") => Promise<void> }) {
+function DataSection({ type, rows, moderationQueue = [], moderating, onModerate, filterOpen, statusFilter, setFilterOpen, setStatusFilter, onExport, onSelect }: { type: string; rows: Row[]; query: string; moderationQueue?: Row[]; moderating?: string | null; onModerate?: (listing: Row, status: "active" | "changes_requested" | "rejected") => Promise<void>; filterOpen:boolean; statusFilter:string; setFilterOpen:(v:boolean)=>void; setStatusFilter:(v:string)=>void; onExport:()=>void; onSelect:(r:Row)=>void }) {
   const descriptions: Record<string,string> = { users:"Llogaritë, verifikimet dhe aktiviteti", listings:"Moderimi dhe inventari i marketplace-it", orders:"Pagesat, dërgesat dhe mosmarrëveshjet", messages:"Komunikimi dhe siguria e komunitetit", authenticity:"Radha e kontrolleve të autenticitetit", catalog:"Kategoritë dhe markat e platformës" };
-  return <>{type === "listings" && <ModerationQueue rows={moderationQueue} busy={moderating} onModerate={onModerate!}/>}<section className="panel data-panel"><div className="data-toolbar"><div><h2>{rows.length} rezultate</h2><p>{descriptions[type]}</p></div><div><button><ListFilter size={16}/> Filtro</button><button className="primary">Eksporto CSV</button></div></div><MiniTable rows={rows} type={type}/></section></>;
+  return <>{type === "listings" && <ModerationQueue rows={moderationQueue} busy={moderating} onModerate={onModerate!}/>}<section className="panel data-panel"><div className="data-toolbar"><div><h2>{rows.length} rezultate</h2><p>{descriptions[type]}</p></div><div><button onClick={() => setFilterOpen(!filterOpen)}><SlidersHorizontal size={16}/> Filtro</button><button className="primary" onClick={onExport}><Download size={16}/> Eksporto CSV</button></div></div>{filterOpen && <div className="admin-filters"><label>Statusi<select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="all">Të gjitha</option><option value="pending">Në pritje</option><option value="pending_review">Në shqyrtim</option><option value="changes_requested">Ndryshime</option><option value="active">Aktive</option><option value="rejected">Refuzuar</option></select></label><button onClick={() => setStatusFilter("all")}>Pastro</button></div>}<MiniTable rows={rows} type={type} onSelect={onSelect}/></section></>;
 }
 
 function ModerationQueue({ rows, busy, onModerate }: { rows: Row[]; busy?: string | null; onModerate: (listing: Row, status: "active" | "changes_requested" | "rejected") => Promise<void> }) {
   return <section className="panel moderation-panel"><div className="moderation-heading"><div><span>RADHA E MODERIMIT</span><h2>{rows.length} produkte në pritje</h2><p>Kontrollo fotografitë dhe të dhënat para publikimit.</p></div><ShieldCheck/></div>{rows.length ? <div className="moderation-grid">{rows.map(row => { const seller = Array.isArray(row.seller) ? row.seller[0] : row.seller; const image = [...(row.listing_images || [])].sort((a,b) => a.sort_order-b.sort_order)[0]; const publicUrl = image?.storage_path && process.env.NEXT_PUBLIC_SUPABASE_URL ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/listing-images/${image.storage_path.split("/").map(encodeURIComponent).join("/")}` : ""; return <article key={row.id}><div className="moderation-image">{publicUrl ? <img src={publicUrl} alt={row.title}/> : <ShoppingBag/>}</div><div className="moderation-copy"><span className="status">{label(row.status)}</span><h3>{row.title}</h3><p>{seller?.full_name || seller?.username || "Shitës CLOZER"} · {row.category?.name_sq || "Pa kategori"}</p><strong>{money(Number(row.price))}</strong>{row.moderation_note && <small>{row.moderation_note}</small>}</div><div className="moderation-actions"><button disabled={busy === row.id} className="approve" onClick={() => void onModerate(row,"active")}><BadgeCheck/> Aprovo</button><button disabled={busy === row.id} onClick={() => void onModerate(row,"changes_requested")}>Kërko ndryshime</button><button disabled={busy === row.id} className="reject" onClick={() => void onModerate(row,"rejected")}>Refuzo</button></div></article>})}</div> : <div className="empty compact"><BadgeCheck/><h3>Radha është e pastër</h3><p>Nuk ka produkte që presin aprovim.</p></div>}</section>;
 }
 
-function MiniTable({ rows, type }: { rows: Row[]; type: string }) {
+function MiniTable({ rows, type, onSelect }: { rows: Row[]; type: string; onSelect?: (row:Row)=>void }) {
   if (!rows.length) return <div className="empty"><div><FileCheck2/></div><h3>Gjithçka është gati</h3><p>Nuk ka ende të dhëna në këtë seksion. Të dhënat e reja do të shfaqen automatikisht.</p></div>;
   const fields: Record<string, [string,string][]> = {
     users:[["full_name","Përdoruesi"],["email","Email"],["created_at","Regjistruar"],["seller_verified","Verifikimi"]],
@@ -148,8 +157,12 @@ function MiniTable({ rows, type }: { rows: Row[]; type: string }) {
     catalog:[["name","Emri"],["slug","Slug"],["kind","Lloji"],["is_active","Aktive"]],
   };
   const cols = fields[type] || fields.listings;
-  return <div className="table-wrap"><table><thead><tr>{cols.map(([,h])=><th key={h}>{h}</th>)}<th/></tr></thead><tbody>{rows.slice(0,50).map((row,i)=><tr key={row.id || `${type}-${i}`}>{cols.map(([key])=><td key={key}>{renderCell(key,row[key],row)}</td>)}<td><button className="row-more"><MoreHorizontal size={18}/></button></td></tr>)}</tbody></table></div>;
+  return <div className="table-wrap"><table><thead><tr>{cols.map(([,h])=><th key={h}>{h}</th>)}<th/></tr></thead><tbody>{rows.slice(0,50).map((row,i)=><tr key={row.id || `${type}-${i}`}>{cols.map(([key])=><td key={key}>{renderCell(key,row[key],row)}</td>)}<td><button className="row-more" aria-label="Hap veprimet" onClick={() => onSelect?.(row)}><MoreHorizontal size={18}/></button></td></tr>)}</tbody></table></div>;
 }
+
+function ActivityPanel({data}:{data:Snapshot}) { return <section className="panel admin-detail"><PanelTitle icon={Activity} title="Aktiviteti i fundit" subtitle="Ngjarjet nga përdoruesit, listimet dhe porositë"/><ActivityFeed data={data}/></section>; }
+function SettingsPanel() { return <section className="panel admin-detail"><PanelTitle icon={Settings} title="Konfigurimi i panelit" subtitle="Kontrollet kryesore të administrimit"/><p>Moderimi i listimeve dhe aplikimeve të shitësve bëhet nga seksionet përkatëse. Të dhënat rifreskohen automatikisht çdo minutë.</p><p>Siguria e llogarive menaxhohet nga Supabase Auth; mbrojtja ndaj fjalëkalimeve të rrjedhura duhet aktivizuar në konfigurimin e Auth.</p></section>; }
+function ActionPanel({row,type,onClose,onDone}:{row:Row;type:string;onClose:()=>void;onDone:(m:string)=>void}) { const [busy,setBusy]=useState(false); const run=async (task:PromiseLike<{error:any}>,message:string)=>{setBusy(true);const {error}=await task;if(error){alert(error.message);setBusy(false);return;}onDone(message)}; const client=createClient(); return <aside className="admin-drawer"><button aria-label="Mbyll" onClick={onClose}><X/></button><span>VEPRIME</span><h2>{row.full_name||row.title||row.name||row.id}</h2><p>{type === "users" ? row.email : "Zgjidh veprimin e duhur për këtë rekord."}</p>{type === "users" && <><button disabled={busy} className="primary" onClick={()=>void run(client.from("profiles").update({seller_verified:!row.seller_verified}).eq("id",row.id),row.seller_verified?"Statusi i shitësit u çaktivizua.":"Shitësi u verifikua.")}>{row.seller_verified?"Hiq verifikimin e shitësit":"Verifiko si shitës"}</button><button disabled={busy} onClick={()=>void run(client.from("profiles").update({identity_verified:!row.identity_verified}).eq("id",row.id),"Verifikimi i identitetit u përditësua.")}>Ndrysho verifikimin e identitetit</button></>}{type === "catalog" && <button disabled={busy} className="primary" onClick={()=>void run((row.kind === "Markë" ? client.from("brands") : client.from("categories")).update({is_active:!row.is_active}).eq("id",row.id),row.is_active?"Elementi u çaktivizua.":"Elementi u aktivizua.")}>{row.is_active?"Çaktivizo":"Aktivizo"}</button>}{type === "messages" && !row.read_at && <button disabled={busy} className="primary" onClick={()=>void run(client.from("messages").update({read_at:new Date().toISOString()}).eq("id",row.id),"Mesazhi u shënua si i lexuar.")}>Shëno të lexuar</button>}{type === "orders" && <button onClick={()=>navigator.clipboard.writeText(String(row.id)).then(()=>onDone("ID e porosisë u kopjua."))}>Kopjo ID e porosisë</button>}<button onClick={onClose}>Mbyll</button></aside>; }
 
 function renderCell(key:string, value:any, row:Row) {
   if (key === "price" || key === "total") return <strong>{money(Number(value))}</strong>;
