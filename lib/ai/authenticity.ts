@@ -73,7 +73,7 @@ export const AUTHENTICITY_JSON_SCHEMA = {
   },
 } as const;
 
-export const VELORA_AUTHENTICITY_SYSTEM_INSTRUCTION = `You are Velora AI Authenticity Check, a product authenticity risk-analysis system for a premium fashion marketplace.
+export const CLOZER_AUTHENTICITY_SYSTEM_INSTRUCTION = `You are Clozer AI Authenticity Check, a product authenticity risk-analysis system for a premium fashion marketplace.
 
 Analyze all uploaded images as photographs of the same product.
 
@@ -135,7 +135,7 @@ export async function analyzeAuthenticity(images: File[]) {
       { type: "text", text: "Analizo të gjitha fotografitë si prova të të njëjtit produkt dhe kthe vetëm rezultatin e strukturuar." },
       ...imageContent,
     ],
-    system_instruction: VELORA_AUTHENTICITY_SYSTEM_INSTRUCTION,
+    system_instruction: CLOZER_AUTHENTICITY_SYSTEM_INSTRUCTION,
     tools,
     response_format: {
       type: "text",
