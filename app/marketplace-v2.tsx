@@ -6214,53 +6214,36 @@ function Dashboard() {
               </button>
             </header>
             <div className="v2-studio-chart">
-              {[45, 60, 38, 74, 54, 82, 65, 96, 73, 88, 79, 108].map((h, i) => (
-                <i key={i} style={{ height: h }}>
-                  <small>
-                    {
-                      [
-                        "1",
-                        "4",
-                        "7",
-                        "10",
-                        "13",
-                        "16",
-                        "19",
-                        "22",
-                        "25",
-                        "28",
-                        "30",
-                        "31",
-                      ][i]
-                    }
-                  </small>
+              {recentOrders.length ? recentOrders.map((order) => (
+                <i key={order.id} style={{ height: Math.max(12, Math.min(108, order.total)) }}>
+                  <small>{new Date(order.created_at).toLocaleDateString("sq-AL", { day: "numeric", month: "short" })}</small>
                 </i>
-              ))}
+              )) : <p className="v2-inventory-empty">Nuk ka ende të dhëna për analizë.</p>}
             </div>
             <div className="v2-chart-summary">
               <span>
-                <b>€18.2k</b>
+                <b>€{deliveredRevenue.toLocaleString("sq-AL", { minimumFractionDigits: 2 })}</b>
                 <small>Vlera e shitur</small>
               </span>
               <span>
-                <b>32</b>
+                <b>{recentOrders.length}</b>
                 <small>Porosi</small>
               </span>
               <span>
-                <b>6.8%</b>
-                <small>Konvertim</small>
+                <b>{views.toLocaleString("sq-AL")}</b>
+                <small>Shikime</small>
               </span>
             </div>
           </section>
           <aside className="v2-studio-panel v2-studio-actions">
             <span>PËRPARËSI</span>
             <h2>
-              {tab === "Ofertat" ? "Oferta që presin" : "Veprime të shpejta"}
+              {tab === "Porositë" ? "Porositë që presin" : "Veprime të shpejta"}
             </h2>
             {[
-              ["3 porosi për dërgim", "Krijo etiketat", "Porositë"],
-              ["6 oferta të reja", "Shqyrto ofertat", "Ofertat"],
-              ["2 shpallje pa vizita", "Përmirëso prezantimin", "Shpalljet"],
+              [`${ordersToShip} porosi për dërgim`, ordersToShip ? "Shiko porositë" : "Nuk ke porosi për dërgim", "Porositë"],
+              [`${sellerConversations} biseda me blerës`, "Përgjigju mesazheve", "Përmbledhje"],
+              [`${items.filter((item) => item.viewsCount === 0).length} shpallje pa vizita`, "Përmirëso prezantimin", "Shpalljet"],
             ].map((x) => (
               <button key={x[0]} onClick={() => setTab(x[2])}>
                 <span>
@@ -6281,24 +6264,20 @@ function Dashboard() {
                 Shiko të gjitha
               </button>
             </header>
-            {products.slice(0, 4).map((p, i) => (
-              <article key={p.id}>
-                <ProductImage p={p} />
+            {recentOrders.length ? recentOrders.map((order) => (
+              <article key={order.id}>
+                <div className="v2-order-placeholder"><Package /></div>
                 <span>
-                  <b>{p.name}</b>
-                  <small>
-                    #VL-{8024 + i} · para {i + 1} orësh
-                  </small>
+                  <b>Porosia #{order.id.slice(0, 8).toUpperCase()}</b>
+                  <small>{new Date(order.created_at).toLocaleDateString("sq-AL")} · {orderStatusLabel(order.status)}</small>
                 </span>
-                <strong>€{p.price}</strong>
-                <button
-                  onClick={() => setNotice("Statusi i porosisë u avancua.")}
-                >
-                  {i === 0 ? "Dërgo tani" : "Shiko"}
+                <strong>€{order.total.toLocaleString("sq-AL")}</strong>
+                <button onClick={() => setTab("Porositë")}>
+                  {order.status === "ready_to_ship" ? "Dërgo tani" : "Shiko"}
                   <ChevronRight />
                 </button>
               </article>
-            ))}
+            )) : <p className="v2-inventory-empty">Ende nuk ka porosi për t’u shfaqur.</p>}
           </section>
         </section>
       )}
