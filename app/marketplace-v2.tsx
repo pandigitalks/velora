@@ -127,6 +127,14 @@ type Order = {
   shippingMethod?: string;
   trackingNumber?: string;
 };
+type CheckoutOrder = Order & { isDemo: boolean };
+type CheckoutConfirmation = CheckoutOrder & {
+  address: string;
+  productName: string;
+  productImage: string;
+  shippingTitle: string;
+  shippingDetail: string;
+};
 type ChatMessage = { mine: boolean; text: string; time: string };
 type Lang = "sq" | "en";
 type BillingAddress = { emri?: string; telefoni?: string; adresa?: string; qyteti?: string; kodiPostal?: string; shteti?: string };
@@ -5290,11 +5298,11 @@ function CheckoutPage({
   catalog,
 }: {
   cart: CartLine[];
-  place: (address: string, shippingMethod: string, shippingCost: number) => Promise<void>;
+  place: (address: string, shippingMethod: string, shippingCost: number) => Promise<CheckoutOrder>;
   catalog: Product[];
 }) {
   const [done, setDone] = useState(false);
-  const [demoOrder, setDemoOrder] = useState(false);
+  const [confirmation, setConfirmation] = useState<CheckoutConfirmation | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [address, setAddress] = useState("");
@@ -5305,6 +5313,8 @@ function CheckoutPage({
     { id: "personal_pickup", title: "Marrje personale", detail: "Dakordohu në chat · pa transport", price: 0 },
   ];
   const shippingCost = shippingOptions.find((option) => option.id === shippingMethod)?.price || 0;
+  const selectedShipping = shippingOptions.find((option) => option.id === shippingMethod) || shippingOptions[0];
+  const checkoutProduct = catalog.find((product) => String(product.id) === String(cart[0]?.id));
   const total = cart.reduce(
     (sum, line) =>
       sum +
@@ -5327,20 +5337,58 @@ function CheckoutPage({
     );
   if (done)
     return (
-      <main className="v2-page">
-        <div className="v2-order-success">
-          <Check />
-          <span>POROSIA U KONFIRMUA</span>
-          <h1>Faleminderit!</h1>
-          <p>
-            {demoOrder
-              ? "Porosia testuese u konfirmua. Nuk krijohet pagesë reale për produktet demo."
-              : "Porosia jote me pagesë në dorëzim u konfirmua. Do të të njoftojmë për çdo hap."}
-          </p>
-          <Link className="v2-pill dark" href="/orders">
-            Gjurmo porosinë
-          </Link>
-        </div>
+      <main className="v2-page v2-confirmation-page">
+        <section className="v2-order-confirmation">
+          <header className="v2-confirmation-hero">
+            <div className="v2-confirmation-check"><Check /></div>
+            <span>{confirmation?.isDemo ? "POROSI TESTUESE" : "POROSIA U KONFIRMUA"}</span>
+            <h1>Faleminderit për blerjen.</h1>
+            <p>
+              {confirmation?.isDemo
+                ? "Rrjedha e blerjes u përfundua me sukses. Ky produkt është demo dhe nuk krijon pagesë reale."
+                : "Porosia u pranua. Do të të njoftojmë sapo shitësi ta përgatisë për dërgesë."}
+            </p>
+            <div className="v2-confirmation-reference">
+              <small>NUMRI I POROSISË</small>
+              <strong>#{confirmation?.id || "CLOZER"}</strong>
+            </div>
+          </header>
+
+          <div className="v2-confirmation-grid">
+            <article className="v2-confirmation-details">
+              <div className="v2-confirmation-section-head">
+                <span>STATUSI I POROSISË</span>
+                <small>Sot</small>
+              </div>
+              <div className="v2-confirmation-timeline">
+                <div className="active"><i><Check /></i><span><b>Porosia u pranua</b><small>Blerja u regjistrua me sukses</small></span></div>
+                <div><i><Package /></i><span><b>Përgatitja nga shitësi</b><small>Produkti përgatitet për transport</small></span></div>
+                <div><i><Clock3 /></i><span><b>Dërgesa</b><small>{confirmation?.shippingDetail || "Koha e dërgesës do të konfirmohet"}</small></span></div>
+              </div>
+
+              <div className="v2-confirmation-product">
+                {confirmation?.productImage && <img src={confirmation.productImage} alt={confirmation.productName} />}
+                <span><small>PRODUKTI</small><b>{confirmation?.productName || "Produkt CLOZER"}</b><em>Pagesë në dorëzim</em></span>
+                <strong>€{(confirmation?.total || 0).toLocaleString()}</strong>
+              </div>
+            </article>
+
+            <aside className="v2-confirmation-receipt">
+              <span>PËRMBLEDHJA</span>
+              <h2>Detajet e porosisë</h2>
+              <div><MapPin /><span><small>ADRESA E DËRGESËS</small><b>{confirmation?.address || address}</b></span></div>
+              <div><Package /><span><small>TRANSPORTI</small><b>{confirmation?.shippingTitle || selectedShipping.title}</b><em>{confirmation?.shippingDetail || selectedShipping.detail}</em></span></div>
+              <div><CreditCard /><span><small>PAGESA</small><b>Në dorëzim</b><em>Paguaj te korrieri kur ta pranosh</em></span></div>
+              <hr />
+              <p><span>Totali në dorëzim</span><strong>€{(confirmation?.total || 0).toLocaleString()}</strong></p>
+            </aside>
+          </div>
+
+          <div className="v2-confirmation-actions">
+            <Link className="v2-pill dark" href="/orders">Shiko porositë <ArrowRight /></Link>
+            <Link className="v2-pill" href="/explore">Vazhdo blerjet</Link>
+          </div>
+        </section>
       </main>
     );
   return (
@@ -5428,7 +5476,17 @@ function CheckoutPage({
               setError("");
               setSubmitting(true);
               void place(address, shippingMethod, shippingCost)
-                .then(() => setDone(true))
+                .then((order) => {
+                  setConfirmation({
+                    ...order,
+                    address,
+                    productName: checkoutProduct?.name || "Produkt CLOZER",
+                    productImage: checkoutProduct?.image || "",
+                    shippingTitle: selectedShipping.title,
+                    shippingDetail: selectedShipping.detail,
+                  });
+                  setDone(true);
+                })
                 .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Porosia nuk mund të konfirmohet."))
                 .finally(() => setSubmitting(false));
             }}
@@ -8007,18 +8065,17 @@ export default function Marketplace() {
       orderId = String(data).slice(0, 8).toUpperCase();
     }
 
-    setOrders([
-      {
-        id: orderId,
-        total: product.price + shippingCost,
-        items: [line.id],
-        date: new Date().toLocaleDateString("sq-AL"),
-        status: isDemo ? "Porosi testuese" : "Në pritje të pagesës në dorëzim",
-        shippingMethod,
-        trackingNumber: shippingMethod === "personal_pickup" ? "Takimi caktohet në chat" : undefined,
-      },
-      ...orders,
-    ]);
+    const createdOrder: CheckoutOrder = {
+      id: orderId,
+      total: product.price + shippingCost,
+      items: [line.id],
+      date: new Date().toLocaleDateString("sq-AL"),
+      status: isDemo ? "Porosi testuese" : "Në pritje të pagesës në dorëzim",
+      shippingMethod,
+      trackingNumber: shippingMethod === "personal_pickup" ? "Takimi caktohet në chat" : undefined,
+      isDemo,
+    };
+    setOrders([createdOrder, ...orders]);
     setCart([]);
     setNotes([
       {
@@ -8031,7 +8088,7 @@ export default function Marketplace() {
       },
       ...notes,
     ]);
-    setDemoOrder(isDemo);
+    return createdOrder;
   };
   const id = decodeURIComponent(path.split("/").pop() || "");
   const hideShell = path === "/sell" && Boolean(account?.sellerVerified);
