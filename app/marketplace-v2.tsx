@@ -1372,15 +1372,6 @@ function AuthModal({
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [selectedSize, setSelectedSize] = useState("");
-  const availableSizes = useMemo(() => {
-    if (!p) return [];
-    const values = p.sizes?.length ? p.sizes : p.size.split(",");
-    return [...new Set(values.map(value => value.trim()).filter(value => value && value !== "Një madhësi"))];
-  }, [p]);
-  useEffect(() => {
-    setSelectedSize(availableSizes.length === 1 ? availableSizes[0] : "");
-  }, [p?.id, availableSizes]);
   const [loading, setLoading] = useState(false);
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -3218,6 +3209,15 @@ function ListingPage({
   const [gallery, setGallery] = useState(0);
   const [zoom, setZoom] = useState(false);
   const [notice, setNotice] = useState("");
+  const [selectedSize, setSelectedSize] = useState("");
+  const availableSizes = useMemo(() => {
+    if (!p) return [];
+    const values = p.sizes?.length ? p.sizes : p.size.split(",");
+    return [...new Set(values.map(value => value.trim()).filter(value => value && value !== "Një madhësi"))];
+  }, [p]);
+  useEffect(() => {
+    setSelectedSize(availableSizes.length === 1 ? availableSizes[0] : "");
+  }, [p?.id, availableSizes]);
   if (!p)
     return (
       <main className="v2-page">
