@@ -5821,7 +5821,8 @@ function SellerApplicationCard({
       setError("Aplikimi nuk u dërgua. Provo përsëri.");
       return;
     }
-    setStatus("pending");
+    setStatus("approved");
+    window.setTimeout(() => window.location.assign("/dashboard"), 500);
   };
   if (status === "pending")
     return (
@@ -5829,17 +5830,17 @@ function SellerApplicationCard({
         <Clock3 />
         <div>
           <span>APLIKIMI U DËRGUA</span>
-          <h2>Në pritje të aprovimit.</h2>
-          <p>Do të aktivizojmë panelin e shitësit pasi ekipi CLOZER ta shqyrtojë aplikimin.</p>
+          <h2>Po aktivizohet llogaria.</h2>
+          <p>Aprovimi në CLOZER është i menjëhershëm. Rifresko faqen nëse paneli nuk hapet automatikisht.</p>
         </div>
       </section>
     );
   return (
     <section className="v2-seller-application">
       <div className="v2-seller-application-copy">
-        <span>{status === "rejected" ? "APLIKO PËRSËRI" : "BËHU SHITËS"}</span>
+        <span>BECOME A SELLER</span>
         <h2>Fillo të shesësh në CLOZER.</h2>
-        <p>Çdo llogari nis si blerës. Plotëso kërkesën dhe paneli i shitësit aktivizohet pas aprovimit.</p>
+        <p>Çdo llogari nis si blerës. Plotëso detajet e tua dhe paneli i shitësit aktivizohet menjëherë.</p>
       </div>
       <form onSubmit={submit}>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Emri i plotë ose biznesi" />
@@ -5852,7 +5853,7 @@ function SellerApplicationCard({
         <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Çfarë planifikon të shesësh? (opsionale)" />
         {error && <small className="v2-auth-error">{error}</small>}
         <button disabled={busy} className="v2-pill dark">
-          {busy ? "Duke dërguar…" : "Dërgo aplikimin"}
+          {busy ? "Duke aktivizuar…" : "Become a seller"}
           <ArrowRight />
         </button>
       </form>
