@@ -2037,27 +2037,42 @@ function AppHeader({
                   </button>
                 </div>
                 {signedIn ? (
-                  <button
-                    className="v2-mobile-logout"
-                    onClick={() => {
-                      setMenu(false);
-                      onSignOut();
-                      router.push("/");
-                    }}
-                  >
-                    <LogOut />
-                    {lang === "sq" ? "Dil nga llogaria" : "Sign out"}
-                  </button>
+                  <div className="v2-mobile-session">
+                    <div>
+                      <span className="v2-mobile-session-avatar">{accountInitials}</span>
+                      <p>
+                        <b>{accountName}</b>
+                        <small>{accountHandle}</small>
+                      </p>
+                    </div>
+                    <button
+                      className="v2-mobile-logout"
+                      onClick={() => {
+                        setMenu(false);
+                        void onSignOut();
+                        router.push("/");
+                      }}
+                    >
+                      <span className="v2-mobile-logout-icon"><LogOut /></span>
+                      <span>
+                        <b>{lang === "sq" ? "Dil nga llogaria" : "Sign out"}</b>
+                        <small>{lang === "sq" ? "Përfundo sesionin në këtë pajisje" : "End this session on this device"}</small>
+                      </span>
+                      <ChevronRight />
+                    </button>
+                  </div>
                 ) : (
                   <button
-                    className="v2-mobile-logout"
+                    className="v2-mobile-signin"
                     onClick={() => {
                       setMenu(false);
                       setAfterLogin(null);
                       setAuth(true);
                     }}
                   >
-                    {lang === "sq" ? "Kyçu" : "Sign in"}
+                    <User />
+                    {lang === "sq" ? "Kyçu në llogari" : "Sign in"}
+                    <ChevronRight />
                   </button>
                 )}
               </div>
