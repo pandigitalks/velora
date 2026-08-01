@@ -5838,7 +5838,7 @@ function SellerApplicationCard({
   return (
     <section className="v2-seller-application">
       <div className="v2-seller-application-copy">
-        <span>BECOME A SELLER</span>
+        <span>BËHU SHITËS</span>
         <h2>Fillo të shesësh në CLOZER.</h2>
         <p>Çdo llogari nis si blerës. Plotëso detajet e tua dhe paneli i shitësit aktivizohet menjëherë.</p>
       </div>
@@ -5853,7 +5853,7 @@ function SellerApplicationCard({
         <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Çfarë planifikon të shesësh? (opsionale)" />
         {error && <small className="v2-auth-error">{error}</small>}
         <button disabled={busy} className="v2-pill dark">
-          {busy ? "Duke aktivizuar…" : "Become a seller"}
+          {busy ? "Duke aktivizuar…" : "Bëhu shitës"}
           <ArrowRight />
         </button>
       </form>
