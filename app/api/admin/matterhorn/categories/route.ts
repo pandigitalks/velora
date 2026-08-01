@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../../../lib/admin-auth";
-import { isExcludedLingerie, matterhornRequest } from "../../../../../lib/matterhorn";
+import { matterhornRequest } from "../../../../../lib/matterhorn";
 
 type MatterhornCategory = Record<string, unknown> & { id?: string | number; category_id?: string | number; name?: string; category_name?: string };
 
@@ -22,7 +22,6 @@ export async function GET() {
     const payload = await matterhornRequest<unknown>("/DICTIONARIES/CATEGORIES");
     const source = categoryList(payload);
     const categories = source
-      .filter(category => !isExcludedLingerie(category))
       .map(category => ({
         id: String(category.id ?? category.category_id ?? ""),
         name: String(category.name ?? category.category_name ?? "Pa emër"),
