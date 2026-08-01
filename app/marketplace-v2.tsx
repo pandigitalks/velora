@@ -3495,15 +3495,15 @@ function ListingPage({
           <article>
             <CreditCard />
             <span>
-              <b>Kosto transparente</b>
-              <small>Totali shfaqet para pagesës</small>
+              <b>Pagesë në dorëzim</b>
+              <small>Klienti paguan te korrieri</small>
             </span>
           </article>
           <article>
             <LockKeyhole />
             <span>
-              <b>Pagesë e mbrojtur</b>
-              <small>Shitësi paguhet pas dorëzimit</small>
+              <b>Porosi e regjistruar</b>
+              <small>Statusi dhe transporti shfaqen në porosi</small>
             </span>
           </article>
           <article>
@@ -5290,10 +5290,12 @@ function CheckoutPage({
   catalog,
 }: {
   cart: CartLine[];
-  place: (address: string, shippingMethod: string, shippingCost: number) => void;
+  place: (address: string, shippingMethod: string, shippingCost: number) => Promise<void>;
   catalog: Product[];
 }) {
   const [done, setDone] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const [address, setAddress] = useState("");
   const [shippingMethod, setShippingMethod] = useState("courier_standard");
   const shippingOptions = [
@@ -5327,13 +5329,13 @@ function CheckoutPage({
       <main className="v2-page">
         <div className="v2-order-success">
           <Check />
-          <span>ORDER CONFIRMED</span>
-          <h1>Thank you, Arnis.</h1>
+          <span>POROSIA U KONFIRMUA</span>
+          <h1>Faleminderit!</h1>
           <p>
-            Your protected order is confirmed. We’ll notify you at every step.
+            Porosia jote me pagesë në dorëzim u konfirmua. Do të të njoftojmë për çdo hap.
           </p>
           <Link className="v2-pill dark" href="/orders">
-            Track my order
+            Gjurmo porosinë
           </Link>
         </div>
       </main>
@@ -5341,43 +5343,43 @@ function CheckoutPage({
   return (
     <main className="v2-page">
       <PageTitle
-        eyebrow="SECURE CHECKOUT"
-        title="Delivery & payment"
-        text="Encrypted checkout with buyer protection"
+        eyebrow="POROSIA"
+        title="Dërgesa dhe pagesa"
+        text="Paguaj te korrieri kur ta pranosh porosinë"
       />
       <div className="v2-checkout">
         <section>
-          <h2>1. Delivery address</h2>
+          <h2>1. Adresa e dërgesës</h2>
           <div className="v2-form">
             <label>
-              Full name
+              Emri i plotë
               <input defaultValue="Arnis Mulliqi" />
             </label>
             <label>
-              Address
+              Adresa
               <input
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder="Street and number"
+                placeholder="Rruga dhe numri"
               />
             </label>
             <div>
               <label>
-                City
+                Qyteti
                 <input defaultValue="Pejë" />
               </label>
               <label>
-                Postal code
+                Kodi postar
                 <input defaultValue="30000" />
               </label>
             </div>
             <label>
-              Country
-              <select defaultValue="Kosovo">
-                <option>Kosovo</option>
-                <option>Albania</option>
-                <option>Germany</option>
-                <option>Switzerland</option>
+              Shteti
+              <select defaultValue="Kosovë">
+                <option>Kosovë</option>
+                <option>Shqipëri</option>
+                <option>Gjermani</option>
+                <option>Zvicër</option>
               </select>
             </label>
           </div>
@@ -5390,58 +5392,49 @@ function CheckoutPage({
               </label>
             ))}
           </div>
-          <h2>3. Payment</h2>
+          <h2>3. Pagesa</h2>
           <div className="v2-payment">
-            <label>
-              <input type="radio" name="pay" defaultChecked />
-              <CreditCard />
-              <span>
-                <b>Card payment</b>
-                <small>Visa, Mastercard, Apple Pay</small>
-              </span>
-            </label>
-            <div className="v2-card-fields">
-              <input placeholder="Card number" inputMode="numeric" />
-              <input placeholder="MM / YY" />
-              <input placeholder="CVC" />
-            </div>
-            <label>
-              <input type="radio" name="pay" />
+            <div className="v2-cod-payment">
               <Package />
               <span>
-                <b>Cash on delivery</b>
-                <small>Available for eligible local orders</small>
+                <b>Pagesë në dorëzim</b>
+                <small>Paguaje porosinë te korrieri kur ta pranosh.</small>
               </span>
-            </label>
+            </div>
           </div>
         </section>
         <aside className="v2-summary">
-          <h2>Protected total</h2>
+          <h2>Totali në dorëzim</h2>
           <p>
-            <span>Items</span>
+            <span>Produktet</span>
             <b>€{total.toLocaleString()}</b>
           </p>
           <p>
-            <span>Shipping</span>
+            <span>Transporti</span>
             <b>{shippingCost ? `€${shippingCost.toFixed(2)}` : "Falas"}</b>
           </p>
           <hr />
           <p className="total">
-            <span>Total</span>
+            <span>Totali</span>
             <b>€{(total + shippingCost).toLocaleString()}</b>
           </p>
           <button
-            disabled={!address.trim()}
+            disabled={!address.trim() || submitting}
             className="v2-pill dark wide"
             onClick={() => {
-              place(address, shippingMethod, shippingCost);
-              setDone(true);
+              setError("");
+              setSubmitting(true);
+              void place(address, shippingMethod, shippingCost)
+                .then(() => setDone(true))
+                .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Porosia nuk mund të konfirmohet."))
+                .finally(() => setSubmitting(false));
             }}
           >
-            Place protected order
+            {submitting ? "Duke konfirmuar…" : "Konfirmo porosinë me pagesë në dorëzim"}
             <LockKeyhole />
           </button>
-          <small>Pagesa mbahet e mbrojtur deri në konfirmimin e dorëzimit.</small>
+          {error && <small className="v2-form-error">{error}</small>}
+          <small>Nuk kërkohet kartelë. Pagesa bëhet vetëm kur korrieri ta dorëzon porosinë.</small>
         </aside>
       </div>
     </main>
@@ -7037,100 +7030,102 @@ function ProfessionalSellersPage() {
   );
 }
 
-const policies: Record<string, [string, string, string[]]> = {
-  "/terms": [
-    "KUSHTET",
-    "Kushtet e përdorimit",
-    "Rregullat që udhëheqin përdorimin e CLOZER-s.",
-    [
-      "Llogaria dhe përgjegjësia",
-      "Blerjet dhe pagesat",
-      "Shitjet dhe tarifat",
-      "Përmbajtja dhe sjellja",
-      "Kufizimi i përgjegjësisë",
+type Policy = {
+  eyebrow: string;
+  title: string;
+  text: string;
+  sections: Array<[string, string]>;
+};
+
+const policies: Record<string, Policy> = {
+  "/terms": {
+    eyebrow: "KUSHTET",
+    title: "Kushtet e përdorimit",
+    text: "Rregullat bazë për blerje, shitje dhe komunikim në CLOZER.",
+    sections: [
+      ["Llogaria dhe përgjegjësia", "Përdoruesi mban përgjegjësi për saktësinë e të dhënave të llogarisë dhe për ruajtjen e qasjes së saj. Nuk lejohet përdorimi i llogarisë së dikujt tjetër ose krijimi i informatave mashtruese."],
+      ["Blerjet dhe pagesat", "Aktualisht porositë bëhen me pagesë në dorëzim. Blerësi e paguan shumën e porosisë dhe transportin te korrieri në momentin e pranimit të dërgesës."],
+      ["Shitjet dhe shpalljet", "Shitësi duhet të publikojë fotografi dhe përshkrime të sakta, të deklarojë gjendjen e produktit dhe të mos e publikojë produktin nëse nuk e ka në posedim."],
+      ["Përmbajtja dhe sjellja", "Nuk tolerohen falsifikimet, mashtrimet, fyerjet, spam-i, publikimi i të dhënave personale të palëve të tjera ose shmangia e qëllimshme e procesit të platformës."],
+      ["Ndryshimet dhe kontaktimi", "CLOZER mund t’i përditësojë këto kushte kur ndryshon shërbimi. Për pyetje ose ankesa, na shkruaj në support@clozer.shop."],
     ],
-  ],
-  "/privacy": [
-    "PRIVATËSIA",
-    "Privatësia dhe të dhënat",
-    "Si i mbledhim, përdorim dhe mbrojmë të dhënat.",
-    [
-      "Të dhënat që mbledhim",
-      "Përdorimi i të dhënave",
-      "Ruajtja dhe siguria",
-      "Të drejtat e përdoruesit",
-      "Cookies dhe preferencat",
+  },
+  "/privacy": {
+    eyebrow: "PRIVATËSIA",
+    title: "Privatësia dhe të dhënat",
+    text: "Si i përdorim të dhënat vetëm për funksionimin e CLOZER.",
+    sections: [
+      ["Të dhënat që mbledhim", "Mund të mbledhim emrin, emailin, numrin e telefonit, adresën e dërgesës, qytetin, shpalljet, mesazhet dhe të dhënat teknike të nevojshme për përdorimin e platformës."],
+      ["Përdorimi i të dhënave", "Të dhënat përdoren për llogarinë, porositë, dërgesat, komunikimin, sigurinë dhe mbështetjen. Nuk i shesim të dhënat personale për reklamim."],
+      ["Ndarja e të dhënave", "Adresa dhe kontakti i nevojshëm për dorëzim ndahen vetëm me shitësin dhe korrierin për porosinë përkatëse. Informatat e tjera nuk ndahen pa bazë të nevojshme."],
+      ["Ruajtja dhe siguria", "Aksesi në llogari mbrohet me autentikim dhe kufizime të të dhënave. Megjithatë, përdoruesi duhet të zgjedhë fjalëkalim të fortë dhe të mos e ndajë atë me askënd."],
+      ["Të drejtat e përdoruesit", "Mund të kërkosh qasje, korrigjim ose fshirje të të dhënave që nuk kërkohen për detyrime operative apo ligjore duke na kontaktuar në support@clozer.shop."],
     ],
-  ],
-  "/returns": [
-    "KTHIMET",
-    "Politika e kthimit",
-    "Mbrojtje e qartë kur produkti nuk përputhet me shpalljen.",
-    [
-      "Afati i raportimit",
-      "Produktet e pranueshme",
-      "Provat e kërkuara",
-      "Rimbursimi",
-      "Produktet e papranueshme",
+  },
+  "/returns": {
+    eyebrow: "KTHIMET",
+    title: "Politika e kthimit",
+    text: "Mbrojtje e qartë kur produkti nuk përputhet materialisht me shpalljen.",
+    sections: [
+      ["Kur pranohet kthimi", "Kthimi mund të kërkohet kur artikulli i dorëzuar ndryshon materialisht nga fotografia, përshkrimi, madhësia, gjendja ose autenticiteti i deklaruar."],
+      ["Raportimi", "Problemi duhet të raportohet sa më shpejt pas pranimit të dërgesës, me fotografi të qarta të produktit, paketimit dhe dëmtimit ose mospërputhjes së pretenduar."],
+      ["Gjendja e produktit", "Produkti duhet të ruhet në gjendjen e pranimit. Mos hiq etiketa, mos e përdor dhe mos e dërgo përsëri pa udhëzimet e CLOZER."],
+      ["Vlerësimi", "CLOZER shqyrton provat e blerësit dhe përgjigjen e shitësit. Nëse mospërputhja konfirmohet, vendoset kthimi ose zgjidhja përkatëse."],
+      ["Rimbursimi", "Për porositë me pagesë në dorëzim, blerësi nuk duhet ta pranojë artikullin kur problemi vërehet në dorëzim. Rastet e tjera trajtohen individualisht nga mbështetja."],
     ],
-  ],
-  "/buyer-protection": [
-    "MBROJTJA",
-    "Mbrojtja e blerësit",
-    "Pagesa e sigurt, autentikim proporcional dhe zgjidhje mosmarrëveshjesh.",
-    [
-      "Pagesa e mbrojtur",
-      "Kontrolli i produktit",
-      "Dërgesa dhe gjurmimi",
-      "Raportimi i problemit",
-      "Rimbursimi",
+  },
+  "/buyer-protection": {
+    eyebrow: "MBROJTJA",
+    title: "Mbrojtja e blerësit",
+    text: "Bli me informacion të qartë, pagesë në dorëzim dhe ndihmë kur ka problem.",
+    sections: [
+      ["Pagesa në dorëzim", "Nuk kërkohet kartelë. Blerësi paguan vetëm kur korrieri ia dorëzon porosinë."],
+      ["Shpalljet dhe kontrolli", "Statusi i kontrollit tregon nivelin e provave të disponueshme. Ai nuk zëvendëson kontrollin personal të blerësit në pranimin e produktit."],
+      ["Dërgesa dhe gjurmimi", "Për porositë me korrier, shitësi duhet ta përgatisë artikullin dhe të vendosë numrin e gjurmimit sapo dërgesa të pranohet nga korrieri."],
+      ["Raportimi i problemit", "Nëse artikulli duket i dëmtuar ose nuk përputhet me shpalljen, fotografoje para përdorimit dhe kontakto support@clozer.shop."],
+      ["Çfarë mbulohet", "Mbrojtja lidhet me mospërputhje materiale me shpalljen. Nuk mbulon ndryshimin e mendjes, zgjedhjen e gabuar të madhësisë së deklaruar saktë ose konsumimin pas pranimit."],
     ],
-  ],
-  "/prohibited-items": [
-    "SIGURIA",
-    "Produktet e ndaluara",
-    "Çfarë nuk mund të shitet në CLOZER.",
-    [
-      "Falsifikimet",
-      "Produktet e vjedhura",
-      "Materialet e ndaluara",
-      "Produktet e rrezikshme",
-      "Shkeljet e pronësisë intelektuale",
+  },
+  "/prohibited-items": {
+    eyebrow: "SIGURIA",
+    title: "Produktet e ndaluara",
+    text: "Çfarë nuk lejohet të shitet në CLOZER.",
+    sections: [
+      ["Falsifikimet", "Nuk lejohen artikuj të rremë, kopje që paraqiten si origjinale, certifikata të falsifikuara ose përshkrime mashtruese të brendit."],
+      ["Produktet e vjedhura", "Ndalohet publikimi i çdo artikulli të fituar në mënyrë të paligjshme ose me histori pronësie të dyshimtë."],
+      ["Artikuj të rrezikshëm", "Nuk lejohen armët, substancat e rrezikshme, produktet e hapura të higjienës personale, barnat, ushqimi ose artikujt që kërkojnë leje të veçantë."],
+      ["Shkeljet e të drejtave", "Nuk lejohet përdorimi i fotografive, teksteve ose markave të palëve të treta në mënyrë që shkel të drejtat e tyre."],
+      ["Veprimi i CLOZER", "Shpalljet që shkelin këto rregulla mund të hiqen dhe llogaritë mund të kufizohen pa paralajmërim kur kërkohet për sigurinë e komunitetit."],
     ],
-  ],
-  "/shipping-policy": [
-    "DËRGESA",
-    "Politika e transportit",
-    "Standardet për etiketa, gjurmim, sigurim dhe afate.",
-    [
-      "Etiketat",
-      "Afatet e dërgimit",
-      "Gjurmimi",
-      "Dërgesa ndërkombëtare",
-      "Humbja ose dëmtimi",
+  },
+  "/shipping-policy": {
+    eyebrow: "DËRGESA",
+    title: "Politika e transportit",
+    text: "Pagesë në dorëzim dhe dërgesa me gjurmim kur është e disponueshme.",
+    sections: [
+      ["Pagesa në dorëzim", "Klienti e paguan porosinë dhe koston e transportit te korrieri, kur dërgesa arrin në adresën e deklaruar."],
+      ["Përgatitja", "Shitësi duhet ta paketojë produktin në mënyrë të sigurt dhe ta dorëzojë te korrieri brenda afatit të komunikuar me blerësin."],
+      ["Gjurmimi", "Kur korrieri ofron gjurmim, numri i gjurmimit vendoset në porosi sapo dërgesa të jetë pranuar."],
+      ["Adresa", "Blerësi është përgjegjës të japë emër, numër telefoni dhe adresë të saktë. Ndryshimet pas nisjes së dërgesës mund të mos jenë të mundshme."],
+      ["Dëmtimi ose mosdorëzimi", "Në rast dëmtimi, vonese ose mosdorëzimi, ruaj paketimin dhe kontakto support@clozer.shop me numrin e porosisë dhe provat përkatëse."],
     ],
-  ],
+  },
 };
 function PolicyPage({ path }: { path: string }) {
   const p = policies[path] || policies["/terms"];
   return (
     <main className="v2-page v2-policy">
-      <PageTitle eyebrow={p[0]} title={p[1]} text={p[2]} />
+      <PageTitle eyebrow={p.eyebrow} title={p.title} text={p.text} />
       <p className="v2-policy-note">
         <AlertTriangle />
-        Dokument demonstrues për UI/UX. Para lançimit duhet shqyrtuar dhe
-        miratuar nga juristët e platformës.
+        Për pyetje, raportime ose kërkesa për porosi, kontakto support@clozer.shop.
       </p>
-      {p[3].map((x, i) => (
-        <section key={x}>
+      {p.sections.map(([heading, body], i) => (
+        <section key={heading}>
           <span>0{i + 1}</span>
           <div>
-            <h2>{x}</h2>
-            <p>
-              CLOZER zbaton rregulla të qarta, transparente dhe të barabarta për
-              blerësit, shitësit dhe dyqanet. Detajet përfundimtare përshtaten
-              me juridiksionin, shërbimet e pagesës dhe partnerët logjistikë.
-            </p>
+            <h2>{heading}</h2>
+            <p>{body}</p>
           </div>
         </section>
       ))}
@@ -7179,11 +7174,11 @@ function AuthenticationPage({ lang }: { lang: Lang }) {
       ];
   const journey = sq
     ? [
-        "Pagesa mbahet në escrow",
+        "Porosia konfirmohet me pagesë në dorëzim",
         "Produkti shkon në qendrën CLOZER",
         "Eksperti kontrollon identitetin dhe gjendjen",
         "Vendoset etiketa e sigurisë",
-        "Produkti dërgohet; pagesa lirohet",
+        "Produkti dërgohet te blerësi",
       ]
     : [
         "Payment is held in escrow",
@@ -7980,23 +7975,39 @@ export default function Marketplace() {
     );
     router.push("/checkout");
   }, [signedIn, router, setCart]);
-  const place = (_address: string, shippingMethod: string, shippingCost: number) => {
-    const total = cart.reduce(
-      (sum, line) =>
-        (listingCatalog.find(
-          (product) => String(product.id) === String(line.id),
-        )?.price || 0) *
-          line.qty +
-        sum,
-      0,
-    );
+  const place = async (address: string, shippingMethod: string, shippingCost: number) => {
+    if (!account) throw new Error("Duhet të kyçesh për të bërë porosi.");
+    if (cart.length !== 1 || cart[0].qty !== 1)
+      throw new Error("Për momentin porositë me pagesë në dorëzim bëhen për një produkt në një kohë.");
+
+    const line = cart[0];
+    const product = listingCatalog.find((item) => String(item.id) === String(line.id));
+    const listingId = String(line.id);
+    if (!product || !/^[0-9a-f-]{36}$/i.test(listingId))
+      throw new Error("Ky është produkt demonstrues për waitlist. Porositë reale hapen vetëm për shpalljet e shitësve realë.");
+
+    const { data, error } = await createClient().rpc("create_cash_on_delivery_order", {
+      p_listing_id: listingId,
+      p_shipping_address: {
+        full_name: account.fullName,
+        phone: account.billingAddress.telefoni || null,
+        address,
+        city: account.billingAddress.qyteti || account.city || null,
+        postal_code: account.billingAddress.kodiPostal || null,
+        country: account.billingAddress.shteti || "Kosovë",
+      },
+      p_shipping_method: shippingMethod,
+      p_shipping_amount: shippingCost,
+    });
+    if (error) throw new Error(error.message);
+
     setOrders([
       {
-        id: `VL-${9000 + orders.length}`,
-        total: total + shippingCost,
-        items: cart.map((item) => item.id),
+        id: String(data).slice(0, 8).toUpperCase(),
+        total: product.price + shippingCost,
+        items: [line.id],
         date: new Date().toLocaleDateString("sq-AL"),
-        status: "Porosia u konfirmua",
+        status: "Në pritje të pagesës në dorëzim",
         shippingMethod,
         trackingNumber: shippingMethod === "personal_pickup" ? "Takimi caktohet në chat" : undefined,
       },
@@ -8007,7 +8018,7 @@ export default function Marketplace() {
       {
         id: Date.now(),
         title: "Porosia u konfirmua",
-        text: "Pagesa jote e mbrojtur u autorizua.",
+        text: "Paguaje korrierin kur ta pranosh porosinë.",
         type: "order",
         read: false,
         time: "Tani",
