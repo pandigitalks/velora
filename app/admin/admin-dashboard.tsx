@@ -8,7 +8,7 @@ import {
   Activity, BadgeCheck, Boxes, ChevronDown, CircleDollarSign,
   Command, FileCheck2, Gauge, LayoutDashboard, Menu, MessageSquare,
   MoreHorizontal, PackageCheck, Search, Settings, ShieldCheck, ShoppingBag, Download, RefreshCw, SlidersHorizontal,
-  Sparkles, TrendingUp, Users, X,
+  Sparkles, TrendingUp, Users, X, Newspaper, Plus, Pencil, Trash2,
 } from "lucide-react";
 import "./admin.css";
 
@@ -26,14 +26,14 @@ const sections = [
   ["seller-applications", "Aplikimet e shitësve", FileCheck2],
   ["listings", "Listimet", ShoppingBag], ["orders", "Porositë", PackageCheck],
   ["messages", "Mesazhet", MessageSquare], ["authenticity", "Autenticiteti", ShieldCheck],
-  ["catalog", "Katalogu", Boxes], ["activity", "Aktiviteti", Activity], ["settings", "Konfigurimi", Settings],
+  ["catalog", "Katalogu", Boxes], ["blog", "Blogu", Newspaper], ["activity", "Aktiviteti", Activity], ["settings", "Konfigurimi", Settings],
 ] as const;
 
 const money = (value: number) => new Intl.NumberFormat("sq-AL", { style: "currency", currency: "EUR" }).format(value || 0);
 const date = (value?: string) => value ? new Intl.DateTimeFormat("sq-AL", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value)) : "—";
 const label = (value?: string) => (value || "—").replaceAll("_", " ");
 
-export default function AdminDashboard({ initialData, initialModerationQueue, initialSellerApplications, admin }: { initialData: Snapshot; initialModerationQueue: Row[]; initialSellerApplications: Row[]; admin: Row }) {
+export default function AdminDashboard({ initialData, initialModerationQueue, initialSellerApplications, initialBlogPosts, admin }: { initialData: Snapshot; initialModerationQueue: Row[]; initialSellerApplications: Row[]; initialBlogPosts: Row[]; admin: Row }) {
   const [active, setActive] = useState("overview");
   const [query, setQuery] = useState("");
   const [sidebar, setSidebar] = useState(false);
@@ -82,7 +82,7 @@ export default function AdminDashboard({ initialData, initialModerationQueue, in
       <div className="admin-content">
         <div className="page-heading"><div><p><Command size={14}/> ADMIN / {active.toUpperCase()}</p><h1>{title}</h1><span>Kontroll i plotë dhe të dhëna në kohë reale për Clozer.</span></div><div className="live"><i/> LIVE <small>Përditësuar {new Date(data.generated_at).toLocaleTimeString("sq-AL", {hour:"2-digit",minute:"2-digit"})}</small></div></div>
         {notice && <div className="moderation-notice">{notice}</div>}
-        {active === "overview" ? <Overview data={data} /> : active === "activity" ? <ActivityPanel data={data} /> : active === "settings" ? <SettingsPanel /> : active === "seller-applications" ? <SellerApplications rows={rows} busy={moderating} onReview={async (application, decision) => {
+        {active === "overview" ? <Overview data={data} /> : active === "activity" ? <ActivityPanel data={data} /> : active === "settings" ? <SettingsPanel /> : active === "blog" ? <BlogManager initialPosts={initialBlogPosts} query={query} /> : active === "seller-applications" ? <SellerApplications rows={rows} busy={moderating} onReview={async (application, decision) => {
           const note = decision === "rejected" ? window.prompt("Shkruaj arsyen e refuzimit:")?.trim() || "" : "";
           if (decision === "rejected" && !note) return;
           setModerating(application.user_id);
@@ -113,6 +113,86 @@ export default function AdminDashboard({ initialData, initialModerationQueue, in
 
 function SellerApplications({ rows, busy, onReview }: { rows: Row[]; busy: string | null; onReview: (application: Row, decision: "approved" | "rejected") => Promise<void> }) {
   return <section className="panel moderation-panel"><div className="moderation-heading"><div><span>APLIKIMET E SHITËSVE</span><h2>{rows.length} aplikime në pritje</h2><p>Kontrollo të dhënat para aktivizimit të panelit të shitësit.</p></div><Users/></div>{rows.length ? <div className="seller-application-admin">{rows.map(row => <article key={row.user_id}><div><span className="status">{row.seller_type === "business" ? "Biznes" : "Individual"}</span><h3>{row.display_name}</h3><p>{row.phone} · {row.city}</p>{row.note && <small>{row.note}</small>}<em>{date(row.created_at)}</em></div><div className="moderation-actions"><button className="approve" disabled={busy === row.user_id} onClick={() => void onReview(row,"approved")}><BadgeCheck/> Aprovo</button><button className="reject" disabled={busy === row.user_id} onClick={() => void onReview(row,"rejected")}><X/> Refuzo</button></div></article>)}</div> : <div className="empty compact"><BadgeCheck/><h3>Nuk ka aplikime në pritje</h3><p>Aplikimet e reja do të shfaqen këtu.</p></div>}</section>;
+}
+
+const emptyBlogPost = { id: "", title: "", slug: "", category: "EDITORIAL", cover_image: "", excerpt: "", content: "", status: "draft", featured: false, published_at: null };
+const blogSlug = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+function BlogManager({ initialPosts, query }: { initialPosts: Row[]; query: string }) {
+  const [posts, setPosts] = useState(initialPosts);
+  const [draft, setDraft] = useState<Row | null>(null);
+  const [slugTouched, setSlugTouched] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? posts.filter(post => JSON.stringify(post).toLowerCase().includes(q)) : posts;
+  }, [posts, query]);
+
+  const begin = (post?: Row) => {
+    setDraft(post ? { ...post } : { ...emptyBlogPost });
+    setSlugTouched(Boolean(post));
+    setMessage("");
+  };
+  const change = (field: string, value: unknown) => setDraft(current => current ? { ...current, [field]: value } : current);
+  const save = async () => {
+    if (!draft) return;
+    const slug = blogSlug(draft.slug || draft.title);
+    if (!draft.title.trim() || !slug || !draft.excerpt.trim() || !draft.content.trim()) {
+      setMessage("Plotëso titullin, përmbledhjen dhe përmbajtjen e artikullit.");
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    const payload = {
+      title: draft.title.trim(), slug, category: draft.category.trim() || "EDITORIAL",
+      cover_image: draft.cover_image.trim() || "/assets/blazer-one.webp",
+      excerpt: draft.excerpt.trim(), content: draft.content.trim(), status: draft.status,
+      featured: Boolean(draft.featured),
+      published_at: draft.status === "published" ? (draft.published_at || new Date().toISOString()) : null,
+    };
+    const client = createClient();
+    const request = draft.id
+      ? client.from("blog_posts").update(payload).eq("id", draft.id).select().single()
+      : client.from("blog_posts").insert(payload).select().single();
+    const { data, error } = await request;
+    setBusy(false);
+    if (error) { setMessage(`Gabim: ${error.message}`); return; }
+    setPosts(current => draft.id ? current.map(post => post.id === data.id ? data : post) : [data, ...current]);
+    setDraft(null);
+    setMessage(draft.id ? "Artikulli u përditësua." : "Artikulli u krijua.");
+  };
+  const remove = async (post: Row) => {
+    if (!window.confirm(`Ta fshijmë artikullin “${post.title}”? Ky veprim nuk kthehet.`)) return;
+    setBusy(true);
+    setMessage("");
+    const { error } = await createClient().from("blog_posts").delete().eq("id", post.id);
+    setBusy(false);
+    if (error) { setMessage(`Gabim: ${error.message}`); return; }
+    setPosts(current => current.filter(item => item.id !== post.id));
+    setMessage("Artikulli u fshi.");
+  };
+
+  return <section className="blog-admin">
+    <div className="blog-admin-head"><div><span>MENAXHIMI I PËRMBAJTJES</span><h2>{posts.length} artikuj</h2><p>Krijo, edito, publiko ose fshij artikujt që shfaqen te CLOZER Stories.</p></div><button className="blog-primary" onClick={() => begin()}><Plus size={16}/> Artikull i ri</button></div>
+    {message && <div className="moderation-notice">{message}</div>}
+    {draft && <div className="blog-editor panel">
+      <div className="blog-editor-title"><div><span>{draft.id ? "EDITO ARTIKULLIN" : "ARTIKULL I RI"}</span><h3>{draft.id ? draft.title : "Përgatit një histori të re"}</h3></div><button aria-label="Mbyll editorin" onClick={() => setDraft(null)}><X/></button></div>
+      <div className="blog-form-grid">
+        <label className="blog-field full">Titulli<input value={draft.title} onChange={e => { change("title", e.target.value); if (!slugTouched) change("slug", blogSlug(e.target.value)); }}/></label>
+        <label className="blog-field">Slug<input value={draft.slug} onChange={e => { setSlugTouched(true); change("slug", blogSlug(e.target.value)); }}/><small>/stories/{draft.slug || "slug-i-artikullit"}</small></label>
+        <label className="blog-field">Kategoria<input value={draft.category} onChange={e => change("category", e.target.value.toUpperCase())}/></label>
+        <label className="blog-field full">Fotografia kryesore<input value={draft.cover_image} onChange={e => change("cover_image", e.target.value)} placeholder="/assets/foto.webp ose https://..."/></label>
+        <label className="blog-field full">Përmbledhja<textarea rows={3} value={draft.excerpt} onChange={e => change("excerpt", e.target.value)}/></label>
+        <label className="blog-field full">Përmbajtja<textarea rows={12} value={draft.content} onChange={e => change("content", e.target.value)} placeholder="Ndaji paragrafët me një rresht bosh."/></label>
+        <label className="blog-field">Statusi<select value={draft.status} onChange={e => change("status", e.target.value)}><option value="draft">Draft</option><option value="published">Publikuar</option></select></label>
+        <label className="blog-check"><input type="checkbox" checked={Boolean(draft.featured)} onChange={e => change("featured", e.target.checked)}/> Shfaqe si artikull kryesor</label>
+      </div>
+      <div className="blog-editor-actions"><button onClick={() => setDraft(null)}>Anulo</button><button className="blog-primary" disabled={busy} onClick={() => void save()}>{busy ? "Duke ruajtur..." : "Ruaj artikullin"}</button></div>
+    </div>}
+    <div className="blog-admin-grid">{shown.map(post => <article className="blog-admin-card" key={post.id}><div className="blog-admin-cover">{post.cover_image ? <img src={post.cover_image} alt=""/> : <Newspaper/>}<span className={`status ${post.status === "published" ? "ok" : ""}`}>{post.status === "published" ? "Publikuar" : "Draft"}</span></div><div className="blog-admin-copy"><small>{post.category} · {date(post.published_at || post.created_at)}</small><h3>{post.title}</h3><p>{post.excerpt}</p><div className="blog-admin-actions"><button onClick={() => begin(post)}><Pencil/> Edito</button><button className="delete" disabled={busy} onClick={() => void remove(post)}><Trash2/> Fshij</button>{post.status === "published" && <Link href={`/stories/${post.slug}`} target="_blank">Shiko</Link>}</div></div></article>)}</div>
+    {!shown.length && <div className="empty panel"><div><Newspaper/></div><h3>Nuk u gjet asnjë artikull</h3><p>Krijo artikullin e parë ose ndrysho kërkimin.</p></div>}
+  </section>;
 }
 
 function Overview({ data }: { data: Snapshot }) {

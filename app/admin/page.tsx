@@ -23,6 +23,7 @@ export default async function AdminPage() {
     { data, error },
     { data: moderationQueue, error: queueError },
     { data: sellerApplications, error: sellerError },
+    { data: blogPosts, error: blogError },
   ] =
     await Promise.all([
       supabase.rpc("admin_dashboard_snapshot"),
@@ -38,10 +39,15 @@ export default async function AdminPage() {
         .select("user_id,display_name,phone,city,seller_type,note,status,created_at")
         .eq("status", "pending")
         .order("created_at", { ascending: true }),
+      supabase
+        .from("blog_posts")
+        .select("id,slug,title,excerpt,content,category,cover_image,status,featured,published_at,created_at,updated_at")
+        .order("created_at", { ascending: false }),
     ]);
   if (error) throw new Error(`Admin dashboard: ${error.message}`);
   if (queueError) throw new Error(`Moderation queue: ${queueError.message}`);
   if (sellerError) throw new Error(`Seller applications: ${sellerError.message}`);
+  if (blogError) throw new Error(`Blog posts: ${blogError.message}`);
 
-  return <AdminDashboard initialData={data} initialModerationQueue={moderationQueue || []} initialSellerApplications={sellerApplications || []} admin={profile} />;
+  return <AdminDashboard initialData={data} initialModerationQueue={moderationQueue || []} initialSellerApplications={sellerApplications || []} initialBlogPosts={blogPosts || []} admin={profile} />;
 }
