@@ -5,6 +5,18 @@ import { matterhornCategorySlug, MINIMUM_PROFIT, safeImageUrl, sellingPrice, slu
 
 export const maxDuration = 300;
 
+function importErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object") {
+    const value = error as Record<string, unknown>;
+    const parts = [value.message, value.details, value.hint, value.code]
+      .filter(Boolean)
+      .map(String);
+    if (parts.length) return parts.join(" · ");
+  }
+  return typeof error === "string" && error ? error : "Gabim gjatë importit.";
+}
+
 async function uploadProductImages(product: MatterhornProduct, sellerId: string, listingId: string) {
   const admin = createAdminSupabaseClient();
   const rows: { listing_id: string; storage_path: string; sort_order: number }[] = [];
@@ -82,13 +94,13 @@ export async function POST(request: NextRequest) {
         await uploadProductImages(product, seller.id, listing.id);
         results.push({ id, listing_id: listing.id, status: existing ? "updated" : "imported" });
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Gabim gjatë importit.";
+        const message = importErrorMessage(error);
         console.error("[matterhorn/import] product failed", { id, message });
         results.push({ id, status: "failed", error: message });
       }
     }
     return NextResponse.json({ results, imported: results.filter(x => x.status !== "failed").length, failed: results.filter(x => x.status === "failed").length });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Importi dështoi." }, { status: 500 });
+    return NextResponse.json({ error: importErrorMessage(error) }, { status: 500 });
   }
 }
