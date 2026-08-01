@@ -13,7 +13,6 @@ const protectedRoutes = [
   "/notifications",
   "/settings",
   "/orders",
-  "/admin",
 ].flatMap((route) => [route, albanianRoutes[route]]).filter(Boolean);
 
 export async function updateSession(request: NextRequest) {
