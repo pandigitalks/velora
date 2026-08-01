@@ -39,3 +39,12 @@ export function canonicalPath(pathname: string) {
   }
   return pathname;
 }
+
+export function albanianPath(href: string) {
+  const [pathname, suffix = ""] = href.split(/(?=[?#])/, 2);
+  for (const [english, albanian] of aliases) {
+    if (pathname === english || pathname.startsWith(`${english}/`))
+      return `${albanian}${pathname.slice(english.length)}${suffix}`;
+  }
+  return href;
+}
