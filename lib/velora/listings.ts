@@ -15,6 +15,7 @@ export type NewListingInput = {
 
 export type PublicListing = {
   id: string;
+  sellerId: string;
   title: string;
   description: string;
   price: number;
@@ -41,6 +42,7 @@ export type PublicListing = {
 
 type PublicListingRow = {
   id: string;
+  seller_id: string;
   title: string;
   description: string;
   price: number | string;
@@ -80,7 +82,7 @@ export async function getPublicListings(): Promise<PublicListing[]> {
   const { data, error } = await supabase
     .from("listings")
     .select(
-      "id,title,description,price,condition,size,color,material,gender,city,views_count,published_at,authenticity_status,shipping_available,negotiable,brand:brands(name),category:categories(name_sq),seller:profiles!listings_seller_id_fkey(full_name,username,avatar_url,seller_verified),listing_images(storage_path,sort_order),listing_boosts(tier,status,expires_at)",
+      "id,seller_id,title,description,price,condition,size,color,material,gender,city,views_count,published_at,authenticity_status,shipping_available,negotiable,brand:brands(name),category:categories(name_sq),seller:profiles!listings_seller_id_fkey(full_name,username,avatar_url,seller_verified),listing_images(storage_path,sort_order),listing_boosts(tier,status,expires_at)",
     )
     .eq("status", "active")
     .order("published_at", { ascending: false });
@@ -100,6 +102,7 @@ export async function getPublicListings(): Promise<PublicListing[]> {
 
     return {
       id: row.id,
+      sellerId: row.seller_id,
       title: row.title,
       description: row.description,
       price: Number(row.price),

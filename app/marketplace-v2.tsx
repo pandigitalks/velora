@@ -71,6 +71,7 @@ type ProductId = string | number;
 
 type Product = {
   id: ProductId;
+  sellerId?: string;
   name: string;
   brand: string;
   price: number;
@@ -1248,6 +1249,7 @@ const sellerHref = (product: Product) =>
 
 const publicListingToProduct = (listing: PublicListing): Product => ({
   id: listing.id,
+  sellerId: listing.sellerId,
   name: listing.title,
   brand: listing.brand.toUpperCase(),
   price: listing.price,
@@ -3101,6 +3103,10 @@ function ListingPage({
   const p = catalog.find((product) => String(product.id) === String(id));
   const [offer, setOffer] = useState(false);
   const [sent, setSent] = useState(false);
+  const [offerAmount, setOfferAmount] = useState("");
+  const [offerBusy, setOfferBusy] = useState(false);
+  const [offerError, setOfferError] = useState("");
+  const [offerConversation, setOfferConversation] = useState("");
   const [question, setQuestion] = useState("");
   const [report, setReport] = useState(false);
   const [flagging, setFlagging] = useState(false);
@@ -3283,9 +3289,7 @@ function ListingPage({
           {p.negotiable !== false && (
             <button
               className="v2-pill outline wide"
-              onClick={() =>
-                signedIn ? setOffer(true) : requestAccount(`/listing/${p.id}`)
-              }
+              onClick={() => { if (signedIn) { setOfferAmount(String(Math.round(p.price * .9))); setOfferError(""); setOffer(true); } else requestAccount(`/listing/${p.id}`); }}
             >
               Bëj ofertë
             </button>
@@ -3472,9 +3476,7 @@ function ListingPage({
         </p>
         {p.negotiable !== false && (
           <button
-            onClick={() =>
-              signedIn ? setOffer(true) : requestAccount(`/listing/${p.id}`)
-            }
+            onClick={() => { if (signedIn) { setOfferAmount(String(Math.round(p.price * .9))); setOfferError(""); setOffer(true); } else requestAccount(`/listing/${p.id}`); }}
           >
             Propozo një çmim
             <ArrowRight />
@@ -3529,9 +3531,7 @@ function ListingPage({
         {p.negotiable !== false && (
           <button
             className="offer"
-            onClick={() =>
-              signedIn ? setOffer(true) : requestAccount(`/listing/${p.id}`)
-            }
+            onClick={() => { if (signedIn) { setOfferAmount(String(Math.round(p.price * .9))); setOfferError(""); setOffer(true); } else requestAccount(`/listing/${p.id}`); }}
           >
             Ofertë
           </button>
@@ -3622,9 +3622,9 @@ function ListingPage({
                   <p>Shitësi ka 24 orë për t’u përgjigjur.</p>
                   <button
                     className="v2-pill dark"
-                    onClick={() => setOffer(false)}
+                    onClick={() => offerConversation ? router.push(`/messages?conversation=${offerConversation}`) : setOffer(false)}
                   >
-                    Përfundo
+                    {offerConversation ? "Shiko bisedën" : "Përfundo"}
                   </button>
                 </div>
               ) : (
@@ -3648,7 +3648,8 @@ function ListingPage({
                       <input
                         inputMode="numeric"
                         type="text"
-                        defaultValue={Math.round(p.price * 0.9)}
+                        value={offerAmount}
+                        onChange={(event) => setOfferAmount(event.target.value.replace(/[^0-9]/g, ""))}
                       />
                     </div>
                   </label>
@@ -3660,11 +3661,25 @@ function ListingPage({
                       placeholder="Shënim opsional"
                     />
                   </label>
+                  {offerError && <small className="v2-auth-error">{offerError}</small>}
                   <button
                     className="v2-pill dark wide"
-                    onClick={() => setSent(true)}
+                    disabled={offerBusy}
+                    onClick={async () => {
+                      const amount = Number(offerAmount);
+                      if (!Number.isFinite(amount) || amount <= 0) { setOfferError("Shkruaj një ofertë të vlefshme."); return; }
+                      if (typeof p.id !== "string" || !/^[0-9a-f-]{36}$/i.test(p.id) || !p.sellerId) { setOfferError("Ky produkt demonstrues nuk është i lidhur me një shitës real."); return; }
+                      setOfferBusy(true); setOfferError("");
+                      try {
+                        const note = question.trim() ? `\n${question.trim()}` : "";
+                        const conversationId = await getOrCreateConversation({ listingId: p.id, sellerId: p.sellerId, firstMessage: `OFERTË · €${amount.toLocaleString("sq-AL")}${note}` });
+                        setOfferConversation(conversationId); setSent(true);
+                      } catch (sendOfferError) {
+                        setOfferError(sendOfferError instanceof Error ? sendOfferError.message : "Oferta nuk mund të dërgohej.");
+                      } finally { setOfferBusy(false); }
+                    }}
                   >
-                    Dërgo ofertën
+                    {offerBusy ? "Duke dërguar…" : "Dërgo ofertën"}
                     <Send />
                   </button>
                 </>
@@ -4685,6 +4700,50 @@ function MessagesPage() {
   );
 }
 
+async function getOrCreateConversation({ listingId, sellerId, firstMessage }: { listingId?: string; sellerId?: string; firstMessage?: string }) {
+  const supabase = createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) throw new Error("Duhet të kyçesh për të dërguar mesazh.");
+
+  let recipientId = sellerId;
+  if (listingId && !recipientId) {
+    const { data: listing, error } = await supabase.from("listings").select("seller_id").eq("id", listingId).single();
+    if (error || !listing?.seller_id) throw new Error("Shitësi i këtij produkti nuk u gjet.");
+    recipientId = listing.seller_id;
+  }
+  if (!recipientId) throw new Error("Shitësi nuk u gjet.");
+  if (recipientId === user.id) throw new Error("Nuk mund t’i dërgosh mesazh vetes.");
+
+  let existing = supabase.from("conversations").select("id").eq("buyer_id", user.id).eq("seller_id", recipientId);
+  existing = listingId ? existing.eq("listing_id", listingId) : existing.is("listing_id", null);
+  const { data: found, error: findError } = await existing.maybeSingle();
+  if (findError) throw findError;
+  let conversationId = found?.id as string | undefined;
+
+  if (!conversationId) {
+    const { data: created, error: createError } = await supabase.from("conversations")
+      .insert({ buyer_id: user.id, seller_id: recipientId, listing_id: listingId || null })
+      .select("id").single();
+    if (createError) {
+      if (createError.code !== "23505") throw createError;
+      let retry = supabase.from("conversations").select("id").eq("buyer_id", user.id).eq("seller_id", recipientId);
+      retry = listingId ? retry.eq("listing_id", listingId) : retry.is("listing_id", null);
+      const { data, error } = await retry.single();
+      if (error) throw error;
+      conversationId = data.id;
+    } else conversationId = created.id;
+  }
+
+  if (firstMessage?.trim()) {
+    if (!conversationId) throw new Error("Biseda nuk mund të krijohej.");
+    const { error } = await supabase.from("messages").insert({ conversation_id: conversationId, sender_id: user.id, body: firstMessage.trim() });
+    if (error) throw error;
+    await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversationId);
+  }
+  if (!conversationId) throw new Error("Biseda nuk mund të krijohej.");
+  return conversationId;
+}
+
 function DatabaseMessagesPage() {
   type ConversationRow = {
     id: string;
@@ -4710,6 +4769,7 @@ function DatabaseMessagesPage() {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const searchParams = useSearchParams();
   useEffect(() => {
     const load = async () => {
       const supabase = createClient();
@@ -4721,6 +4781,16 @@ function DatabaseMessagesPage() {
         return;
       }
       setUserId(user.id);
+      let requestedConversation = searchParams.get("conversation") || "";
+      const listingId = searchParams.get("listing") || "";
+      const sellerId = searchParams.get("seller") || "";
+      if (!requestedConversation && (listingId || sellerId)) {
+        try {
+          requestedConversation = await getOrCreateConversation({ listingId: listingId || undefined, sellerId: sellerId || undefined });
+        } catch (conversationStartError) {
+          setError(conversationStartError instanceof Error ? conversationStartError.message : "Biseda nuk mund të hapej.");
+        }
+      }
       const { data, error: conversationError } = await supabase
         .from("conversations")
         .select(
@@ -4734,11 +4804,11 @@ function DatabaseMessagesPage() {
       }
       const rows = (data || []) as unknown as ConversationRow[];
       setConversations(rows);
-      setActive(rows[0]?.id || "");
+      setActive(rows.some(row => row.id === requestedConversation) ? requestedConversation : rows[0]?.id || "");
       setLoading(false);
     };
     void load();
-  }, []);
+  }, [searchParams]);
   useEffect(() => {
     if (!active) return;
     const load = async () => {
@@ -4770,6 +4840,8 @@ function DatabaseMessagesPage() {
       return;
     }
     setMessages((v) => [...v, data as MessageRow]);
+    await createClient().from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", active);
+    setConversations(current => current.map(conversation => conversation.id === active ? { ...conversation, updated_at: new Date().toISOString() } : conversation));
   };
   if (loading)
     return (
@@ -4787,6 +4859,7 @@ function DatabaseMessagesPage() {
           title="Mesazhet"
           text="Bisedat me blerës dhe shitës shfaqen këtu"
         />
+        {error && <p className="v2-auth-error">{error}</p>}
         <Empty
           icon={<MessageCircle />}
           title="Ende nuk ke mesazhe"
@@ -5677,12 +5750,17 @@ function SellerProfilePage({
   saved,
   toggle,
   add,
+  signedIn,
 }: {
   slug: string;
   saved: ProductId[];
   toggle: (id: ProductId) => void;
   add: (id: ProductId) => void;
+  signedIn: boolean;
 }) {
+  const router = useRouter();
+  const [contactBusy, setContactBusy] = useState(false);
+  const [contactError, setContactError] = useState("");
   const sellerProducts = products.filter(
     (p) => p.seller.toLowerCase().replace(/[^a-z0-9]+/g, "-") === slug,
   );
@@ -5722,11 +5800,28 @@ function SellerProfilePage({
         <aside>
           <button
             className="v2-pill dark"
-            onClick={() => requestAccount("/messages")}
+            disabled={contactBusy}
+            onClick={async () => {
+              if (!signedIn) { requestAccount(`/seller/${slug}`); return; }
+              setContactBusy(true); setContactError("");
+              try {
+                let sellerId = sellerProducts.find(product => product.sellerId)?.sellerId;
+                if (!sellerId) {
+                  const { data, error } = await createClient().from("profiles").select("id").eq("username", slug).maybeSingle();
+                  if (error) throw error;
+                  sellerId = data?.id;
+                }
+                if (!sellerId) throw new Error("Ky profil demonstrues nuk është ende i lidhur me një biznes real.");
+                router.push(`/messages?seller=${encodeURIComponent(sellerId)}`);
+              } catch (contactSellerError) {
+                setContactError(contactSellerError instanceof Error ? contactSellerError.message : "Biseda nuk mund të hapej.");
+              } finally { setContactBusy(false); }
+            }}
           >
             <MessageCircle />
-            Kontakto
+            {contactBusy ? "Duke hapur…" : "Kontakto"}
           </button>
+          {contactError && <small className="v2-auth-error">{contactError}</small>}
         </aside>
       </section>
       <div className="v2-profile-trust">
@@ -7827,6 +7922,7 @@ export default function Marketplace() {
         saved={privateSaved}
         toggle={toggle}
         add={add}
+        signedIn={signedIn}
       />
     );
   else if (path === "/profile" || path === "/dashboard")
