@@ -10,8 +10,10 @@ import {
   MoreHorizontal, PackageCheck, Search, Settings, ShieldCheck, ShoppingBag, Download, RefreshCw, SlidersHorizontal,
   Sparkles, TrendingUp, Users, X, Newspaper, Plus, Pencil, Trash2,
   Gift, Power, Trophy, Copy, Share2,
+  PackagePlus,
 } from "lucide-react";
 import "./admin.css";
+import MatterhornImport from "./matterhorn-import";
 
 type Row = Record<string, any>;
 type Snapshot = {
@@ -28,6 +30,7 @@ const sections = [
   ["listings", "Listimet", ShoppingBag], ["orders", "Porositë", PackageCheck],
   ["messages", "Mesazhet", MessageSquare], ["authenticity", "Autenticiteti", ShieldCheck],
   ["catalog", "Katalogu", Boxes], ["blog", "Blogu", Newspaper], ["waitlist", "Waitlist", Gift], ["activity", "Aktiviteti", Activity], ["settings", "Konfigurimi", Settings],
+  ["matterhorn", "Importi Matterhorn", PackagePlus],
 ] as const;
 
 const money = (value: number) => new Intl.NumberFormat("sq-AL", { style: "currency", currency: "EUR" }).format(value || 0);
@@ -83,7 +86,7 @@ export default function AdminDashboard({ initialData, initialModerationQueue, in
       <div className="admin-content">
         <div className="page-heading"><div><p><Command size={14}/> ADMIN / {active.toUpperCase()}</p><h1>{title}</h1><span>Kontroll i plotë dhe të dhëna në kohë reale për Clozer.</span></div><div className="live"><i/> LIVE <small>Përditësuar {new Date(data.generated_at).toLocaleTimeString("sq-AL", {hour:"2-digit",minute:"2-digit"})}</small></div></div>
         {notice && <div className="moderation-notice">{notice}</div>}
-        {active === "overview" ? <Overview data={data} /> : active === "activity" ? <ActivityPanel data={data} /> : active === "settings" ? <SettingsPanel /> : active === "waitlist" ? <WaitlistManager initialEntries={initialWaitlist} initialSettings={initialSiteSettings} query={query} /> : active === "blog" ? <BlogManager initialPosts={initialBlogPosts} query={query} /> : active === "seller-applications" ? <SellerApplications rows={rows} busy={moderating} onReview={async (application, decision) => {
+        {active === "overview" ? <Overview data={data} /> : active === "matterhorn" ? <MatterhornImport /> : active === "activity" ? <ActivityPanel data={data} /> : active === "settings" ? <SettingsPanel /> : active === "waitlist" ? <WaitlistManager initialEntries={initialWaitlist} initialSettings={initialSiteSettings} query={query} /> : active === "blog" ? <BlogManager initialPosts={initialBlogPosts} query={query} /> : active === "seller-applications" ? <SellerApplications rows={rows} busy={moderating} onReview={async (application, decision) => {
           const note = decision === "rejected" ? window.prompt("Shkruaj arsyen e refuzimit:")?.trim() || "" : "";
           if (decision === "rejected" && !note) return;
           setModerating(application.user_id);
