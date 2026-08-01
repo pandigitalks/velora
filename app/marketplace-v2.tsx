@@ -1805,7 +1805,9 @@ function AppHeader({
                   aria-expanded={profile}
                   onClick={() => setProfile((v) => !v)}
                 >
-                  {accountInitials}
+                  {account?.avatarUrl ? (
+                    <img src={account.avatarUrl} alt={accountName} />
+                  ) : accountInitials}
                 </button>
                 <AnimatePresence>
                   {profile && (
@@ -1817,7 +1819,11 @@ function AppHeader({
                       exit={{ opacity: 0, y: -8, scale: 0.98 }}
                     >
                       <div>
-                        <span className="v2-avatar">{accountInitials}</span>
+                        <span className="v2-avatar">
+                          {account?.avatarUrl ? (
+                            <img src={account.avatarUrl} alt={accountName} />
+                          ) : accountInitials}
+                        </span>
                         <p>
                           <b>{accountName}</b>
                           <small>{accountHandle}</small>
@@ -5765,7 +5771,9 @@ function ProfilePage({
     <main className="v2-page">
       <section className="v2-profile-head">
         <div className="v2-profile-avatar">
-          {initials}
+          {account?.avatarUrl ? (
+            <img src={account.avatarUrl} alt={account.fullName || "Profili"} />
+          ) : initials}
           {account?.identityVerified && (
             <span>
               <BadgeCheck />
@@ -5971,11 +5979,26 @@ function SellerProfilePage({
   const router = useRouter();
   const [contactBusy, setContactBusy] = useState(false);
   const [contactError, setContactError] = useState("");
+  const [publicSeller, setPublicSeller] = useState<{
+    id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+    seller_verified: boolean;
+    identity_verified: boolean;
+  } | null>(null);
+  useEffect(() => {
+    void createClient()
+      .from("profiles")
+      .select("id,full_name,avatar_url,seller_verified,identity_verified")
+      .eq("username", slug)
+      .maybeSingle()
+      .then(({ data }) => setPublicSeller(data));
+  }, [slug]);
   const sellerProducts = products.filter(
-    (p) => p.seller.toLowerCase().replace(/[^a-z0-9]+/g, "-") === slug,
+    (p) => p.sellerSlug === slug || p.sellerId === publicSeller?.id,
   );
   const seller =
-    sellerProducts[0]?.seller ||
+    publicSeller?.full_name || sellerProducts[0]?.seller ||
     slug
       .split("-")
       .map((x) => x.charAt(0).toUpperCase() + x.slice(1))
@@ -5989,7 +6012,12 @@ function SellerProfilePage({
   return (
     <main className="v2-page">
       <section className="v2-profile-head public">
-        <div className="v2-profile-avatar">{initials}</div>
+        <div className="v2-profile-avatar">
+          {publicSeller?.avatar_url ? (
+            <img src={publicSeller.avatar_url} alt={seller} />
+          ) : initials}
+          {publicSeller?.identity_verified && <span><BadgeCheck /></span>}
+        </div>
         <div>
           <span>PROFIL PUBLIK I SHITËSIT</span>
           <h1>{seller}</h1>
@@ -6015,7 +6043,7 @@ function SellerProfilePage({
               if (!signedIn) { requestAccount(`/seller/${slug}`); return; }
               setContactBusy(true); setContactError("");
               try {
-                let sellerId = sellerProducts.find(product => product.sellerId)?.sellerId;
+                let sellerId = publicSeller?.id || sellerProducts.find(product => product.sellerId)?.sellerId;
                 if (!sellerId) {
                   const { data, error } = await createClient().from("profiles").select("id").eq("username", slug).maybeSingle();
                   if (error) throw error;

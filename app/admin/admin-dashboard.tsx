@@ -71,7 +71,7 @@ export default function AdminDashboard({ initialData, initialModerationQueue, in
         <button className={active === "activity" ? "active" : ""} onClick={() => setActive("activity")}><Activity size={18}/><span>Aktiviteti</span></button>
         <button className={active === "settings" ? "active" : ""} onClick={() => setActive("settings")}><Settings size={18}/><span>Konfigurimi</span></button>
       </nav>
-      <div className="admin-user"><div className="avatar">{(admin.full_name || admin.username || "A")[0]}</div><div><strong>{admin.full_name || admin.username || "Administrator"}</strong><small>Super Admin</small></div><ChevronDown size={16}/></div>
+      <div className="admin-user"><div className="avatar">{admin.avatar_url ? <img src={admin.avatar_url} alt={admin.full_name || "Clozer Shop"}/> : (admin.full_name || admin.username || "A")[0]}</div><div><strong>{admin.full_name || admin.username || "Administrator"}</strong><small>Super Admin</small></div><ChevronDown size={16}/></div>
     </aside>
     {sidebar && <button aria-label="Mbyll menynë" className="sidebar-scrim" onClick={() => setSidebar(false)}/>} 
     <main className="admin-main">
