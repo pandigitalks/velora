@@ -38,7 +38,7 @@ export function sellingPrice(cost: number, shipping = DEFAULT_SHIPPING_COST, pro
   return Math.round((cost + shipping + Math.max(MINIMUM_PROFIT, profit)) * 100) / 100;
 }
 
-const MATTERHORN_RETRY_DELAYS_MS = [0, 700, 1800];
+const MATTERHORN_RETRY_DELAYS_MS = [0];
 
 function upstreamMessage(body: string, status: number) {
   const compact = body.replace(/\\s+/g, " ").trim().slice(0, 240);
@@ -67,7 +67,7 @@ export async function matterhornRequest<T>(path: string): Promise<T> {
           "user-agent": "Velora-Matterhorn-Importer/1.0",
         },
         cache: "no-store",
-        signal: AbortSignal.timeout(30000),
+        signal: AbortSignal.timeout(10000),
       });
       const body = await response.text();
       const contentType = response.headers.get("content-type") || "";
