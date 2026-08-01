@@ -1823,18 +1823,21 @@ function AppHeader({
                         </span>
                         <ChevronRight />
                       </Link>
-                      <Link
-                        onClick={() => setProfile(false)}
-                        role="menuitem"
-                        href="/dashboard"
-                      >
-                        <span>
-                          {lang === "sq"
-                            ? "Paneli i shitësit"
-                            : "Seller studio"}
-                        </span>
-                        <ChevronRight />
-                      </Link>
+                      {account?.sellerVerified ? (
+                        <Link
+                          onClick={() => setProfile(false)}
+                          role="menuitem"
+                          href="/dashboard"
+                        >
+                          <span>{lang === "sq" ? "Paneli i shitësit" : "Seller studio"}</span>
+                          <ChevronRight />
+                        </Link>
+                      ) : (
+                        <Link onClick={() => setProfile(false)} role="menuitem" href="/sell">
+                          <span>{lang === "sq" ? "Fillo të shesësh" : "Start selling"}</span>
+                          <ChevronRight />
+                        </Link>
+                      )}
                       <Link
                         onClick={() => setProfile(false)}
                         role="menuitem"
@@ -5998,6 +6001,8 @@ function Reviews() {
 
 function Dashboard() {
   const [items, setItems] = useState<SellerListing[]>([]);
+  const [recentOrders, setRecentOrders] = useState<Array<{ id: string; total: number; status: string; created_at: string }>>([]);
+  const [sellerConversations, setSellerConversations] = useState(0);
   const [loadingItems, setLoadingItems] = useState(true);
   const [itemsError, setItemsError] = useState("");
   const [tab, setTab] = useState("Përmbledhje");
@@ -6015,10 +6020,30 @@ function Dashboard() {
     finally { setLoadingItems(false); }
   };
   useEffect(() => { void loadItems(); }, []);
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const [{ data: orders }, { count: conversations }] = await Promise.all([
+        supabase.from("orders").select("id,total,status,created_at").eq("seller_id", user.id).order("created_at", { ascending: false }).limit(4),
+        supabase.from("conversations").select("id", { count: "exact", head: true }).eq("seller_id", user.id),
+      ]);
+      setRecentOrders((orders || []).map((order) => ({ ...order, total: Number(order.total) || 0 })));
+      setSellerConversations(conversations || 0);
+    };
+    void loadDashboardData();
+  }, []);
   const statusLabel = (status: string) => ({ active: "Aktiv", paused: "Pezulluar", draft: "Draft", pending_review: "Në kontroll", changes_requested: "Kërkon ndryshime", rejected: "Refuzuar", sold: "Shitur", reserved: "Rezervuar" }[status] || status);
+  const orderStatusLabel = (status: string) => ({ pending: "Në pritje", paid: "Paguar", authentication: "Në verifikim", ready_to_ship: "Për dërgim", shipped: "Dërguar", delivered: "Dorëzuar", cancelled: "Anuluar", refunded: "Rimbursuar", disputed: "Në shqyrtim" }[status] || status);
   const visible = items.filter((x) =>
     `${x.title} ${x.brand}`.toLowerCase().includes(query.toLowerCase()),
   );
+  const views = items.reduce((sum, item) => sum + (Number(item.viewsCount) || 0), 0);
+  const ordersToShip = recentOrders.filter((order) => order.status === "ready_to_ship").length;
+  const deliveredRevenue = recentOrders
+    .filter((order) => order.status === "delivered")
+    .reduce((sum, order) => sum + order.total, 0);
   const save = async (e: FormEvent) => {
     e.preventDefault();
     if (!editing) return;
@@ -6070,14 +6095,14 @@ function Dashboard() {
       <section className="v2-studio-kpis">
         <article className="main">
           <span>TË HYRAT NETO · 30 DITË</span>
-          <b>€12,840.50</b>
+          <b>€{deliveredRevenue.toLocaleString("sq-AL", { minimumFractionDigits: 2 })}</b>
           <small>
-            <TrendingUp /> +24.8% krahasuar me muajin e kaluar
+            <TrendingUp /> Vetëm nga porositë e dorëzuara
           </small>
           <div>
-            {[22, 42, 36, 58, 49, 72, 65, 89, 76, 95, 86, 108].map((h, i) => (
-              <i key={i} style={{ height: h }} />
-            ))}
+            {recentOrders.length ? recentOrders.map((order) => (
+              <i key={order.id} style={{ height: Math.max(10, Math.min(108, order.total)) }} />
+            )) : <small>Ende nuk ka porosi të dorëzuara.</small>}
           </div>
         </article>
         {[
@@ -6086,9 +6111,9 @@ function Dashboard() {
             String(items.filter((x) => x.status === "active").length),
             "Gjithsej në katalog",
           ],
-          ["Oferta në pritje", "6", "2 kërkojnë përgjigje"],
-          ["Porosi për dërgim", "3", "Vepro sot"],
-          ["Vizita", "4,286", "30 ditët e fundit"],
+          ["Mesazhe nga blerësit", String(sellerConversations), "Biseda të hapura"],
+          ["Porosi për dërgim", String(ordersToShip), ordersToShip ? "Vepro sot" : "Asnjë porosi për dërgim"],
+          ["Vizita", views.toLocaleString("sq-AL"), "Nga shpalljet e tua"],
         ].map((x) => (
           <article key={x[0]}>
             <span>{x[0]}</span>
@@ -6098,7 +6123,7 @@ function Dashboard() {
         ))}
       </section>
       <nav className="v2-studio-tabs">
-        {["Përmbledhje", "Shpalljet", "Porositë", "Ofertat", "Analitika"].map(
+        {["Përmbledhje", "Shpalljet", "Porositë", "Analitika"].map(
           (x) => (
             <button
               className={tab === x ? "active" : ""}
@@ -6106,7 +6131,7 @@ function Dashboard() {
               key={x}
             >
               {x}
-              {x === "Ofertat" && <b>6</b>}
+              {x === "Porositë" && recentOrders.length > 0 && <b>{recentOrders.length}</b>}
             </button>
           ),
         )}
