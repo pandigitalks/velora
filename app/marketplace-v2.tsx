@@ -57,7 +57,10 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "../lib/supabase/client";
 import {
   createListing,
+  getSellerListings,
   getPublicListings,
+  updateListing,
+  type SellerListing,
   type PublicListing,
 } from "../lib/velora/listings";
 import {
@@ -143,6 +146,13 @@ type ListingDraft = {
   size: string;
   retailPrice: number;
   price: number;
+  description: string;
+  color: string;
+  material: string;
+  reference: string;
+  city: string;
+  negotiable: boolean;
+  shippingAvailable: boolean;
   image?: string;
   images?: string[];
   publishedAt: string;
@@ -1273,7 +1283,7 @@ const publicListingToProduct = (listing: PublicListing): Product => ({
   description: listing.description,
   viewsCount: listing.viewsCount,
   publishedAt: listing.publishedAt,
-  reference: `VL-${listing.id.replace(/-/g, "").slice(0, 8).toUpperCase()}`,
+  reference: listing.reference || `VL-${listing.id.replace(/-/g, "").slice(0, 8).toUpperCase()}`,
   authLevel: listing.authenticityStatus === "verified" ? "expert" : "none",
   boostTier: listing.boostTier,
 });
@@ -3855,6 +3865,13 @@ function SellPage({
   const [condition, setCondition] = useState("Si i ri");
   const [gender, setGender] = useState("Femra");
   const [size, setSize] = useState("");
+  const [description, setDescription] = useState("");
+  const [color, setColor] = useState("");
+  const [material, setMaterial] = useState("");
+  const [reference, setReference] = useState("");
+  const [city, setCity] = useState("");
+  const [negotiable, setNegotiable] = useState(true);
+  const [shippingAvailable, setShippingAvailable] = useState(true);
   const [retailPrice, setRetailPrice] = useState(1600);
   const [price, setPrice] = useState(0);
   const [published, setPublished] = useState(false);
@@ -4276,10 +4293,34 @@ function SellPage({
                   </label>
                 )}
               </div>
+              <div>
+                <label>
+                  Ngjyra
+                  <input value={color} onChange={(e) => setColor(e.target.value)} placeholder="p.sh. Ulliri" />
+                </label>
+                <label>
+                  Materiali
+                  <input value={material} onChange={(e) => setMaterial(e.target.value)} placeholder="p.sh. Lëkurë" />
+                </label>
+              </div>
+              <div>
+                <label>
+                  Referenca / kodi i modelit
+                  <input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="p.sh. VL-1 ose kodi i produktit" />
+                </label>
+                <label>
+                  Qyteti
+                  <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="p.sh. Prishtinë" />
+                </label>
+              </div>
               <label>
                 Përshkrimi
-                <textarea defaultValue="Produkt i ruajtur me kujdes. Fotografitë paraqesin gjendjen aktuale." />
+                <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Përshkruaj gjendjen, historinë, defektet dhe çfarë përfshihet." />
               </label>
+              <div className="v2-listing-options">
+                <label><input type="checkbox" checked={negotiable} onChange={(e) => setNegotiable(e.target.checked)} /> Pranoj oferta për çmimin</label>
+                <label><input type="checkbox" checked={shippingAvailable} onChange={(e) => setShippingAvailable(e.target.checked)} /> Dërgesa është në dispozicion</label>
+              </div>
             </div>
           </>
         )}
@@ -4386,7 +4427,7 @@ function SellPage({
             disabled={
               publishing ||
               (step === 1 && captured.length < shots.length) ||
-              (step === 2 && (!title.trim() || !gender || !size)) ||
+              (step === 2 && (!title.trim() || !gender || !size || !description.trim() || !color.trim() || !material.trim())) ||
               (step === 3 && (!retailPrice || !price))
             }
             className="v2-pill dark"
@@ -4411,6 +4452,13 @@ function SellPage({
                   size,
                   retailPrice,
                   price: price || suggested[0],
+                  description,
+                  color,
+                  material,
+                  reference,
+                  city,
+                  negotiable,
+                  shippingAvailable,
                   image: cover || preview,
                   images: imageList,
                   publishedAt: new Date().toISOString(),
@@ -5564,11 +5612,9 @@ function SettingsPage({ account }: { account: AccountProfile | null }) {
 
 function ProfilePage({
   listings,
-  dashboardListings,
   account,
 }: {
   listings: Product[];
-  dashboardListings: ListingDraft[];
   account: AccountProfile | null;
 }) {
   const path = usePathname();
@@ -5583,7 +5629,7 @@ function ProfilePage({
   }, [account, listings.length]);
   if (path === "/dashboard")
     return account?.sellerVerified ? (
-      <Dashboard listings={dashboardListings} />
+      <Dashboard />
     ) : (
       <main className="v2-page">
         <SellerApplicationCard account={account} />
@@ -5927,77 +5973,45 @@ function Reviews() {
   );
 }
 
-function Dashboard({ listings }: { listings: ListingDraft[] }) {
-  type SellerItem = {
-    id: ProductId;
-    title: string;
-    brand: string;
-    price: number;
-    image: string;
-    status: "Aktiv" | "Pezulluar" | "Draft";
-    views: number;
-    saves: number;
-    condition: string;
-  };
-  const defaults: SellerItem[] = products
-    .slice(0, 6)
-    .map((p, i) => ({
-      id: p.id,
-      title: p.name,
-      brand: p.brand,
-      price: p.price,
-      image: p.image,
-      status: i === 4 ? "Pezulluar" : "Aktiv",
-      views: 820 - i * 73,
-      saves: 42 - i * 4,
-      condition: p.condition,
-    }));
-  const [items, setItems] = usePersistent<SellerItem[]>(
-    "velora-seller-inventory",
-    defaults,
-  );
+function Dashboard() {
+  const [items, setItems] = useState<SellerListing[]>([]);
+  const [loadingItems, setLoadingItems] = useState(true);
+  const [itemsError, setItemsError] = useState("");
   const [tab, setTab] = useState("Përmbledhje");
   const [query, setQuery] = useState("");
-  const [editing, setEditing] = useState<SellerItem | null>(null);
-  const [boosting, setBoosting] = useState<SellerItem | null>(null);
+  const [editing, setEditing] = useState<SellerListing | null>(null);
+  const [replacementImages, setReplacementImages] = useState<string[]>([]);
+  const [boosting, setBoosting] = useState<SellerListing | null>(null);
   const [boostedIds, setBoostedIds] = usePersistent<ProductId[]>("clozer-boosted-listings", []);
   const [notice, setNotice] = useState("");
-  const merged = useMemo(
-    () => [
-      ...listings.map((l) => ({
-        id: l.id,
-        title: l.title,
-        brand: l.brand,
-        price: l.price,
-        image: l.image || "/assets/bag-one.webp",
-        status: "Aktiv" as const,
-        views: 0,
-        saves: 0,
-        condition: l.condition,
-      })),
-      ...items,
-    ],
-    [listings, items],
-  );
-  const visible = merged.filter((x) =>
+  const loadItems = async () => {
+    setLoadingItems(true);
+    setItemsError("");
+    try { setItems(await getSellerListings()); }
+    catch (error) { setItemsError(error instanceof Error ? error.message : "Shpalljet nuk u ngarkuan."); }
+    finally { setLoadingItems(false); }
+  };
+  useEffect(() => { void loadItems(); }, []);
+  const statusLabel = (status: string) => ({ active: "Aktiv", paused: "Pezulluar", draft: "Draft", pending_review: "Në kontroll", changes_requested: "Kërkon ndryshime", rejected: "Refuzuar", sold: "Shitur", reserved: "Rezervuar" }[status] || status);
+  const visible = items.filter((x) =>
     `${x.title} ${x.brand}`.toLowerCase().includes(query.toLowerCase()),
   );
-  const save = (e: FormEvent) => {
+  const save = async (e: FormEvent) => {
     e.preventDefault();
     if (!editing) return;
-    setItems(items.map((x) => (x.id === editing.id ? editing : x)));
-    setEditing(null);
-    setNotice("Ndryshimet u ruajtën në shpallje.");
+    try {
+      await updateListing(editing, replacementImages);
+      setEditing(null); setReplacementImages([]);
+      await loadItems();
+      setNotice("Ndryshimet u ruajtën në shpallje.");
+    } catch (error) { setNotice(error instanceof Error ? error.message : "Ndryshimet nuk u ruajtën."); }
   };
-  const toggleItem = (id: ProductId) => {
-    setItems(
-      items.map((x) =>
-        x.id === id
-          ? { ...x, status: x.status === "Aktiv" ? "Pezulluar" : "Aktiv" }
-          : x,
-      ),
-    );
-    setNotice("Statusi i shpalljes u përditësua.");
+  const toggleItem = async (item: SellerListing) => {
+    const nextStatus = item.status === "active" ? "paused" : "pending_review";
+    const { error } = await createClient().from("listings").update({ status: nextStatus }).eq("id", item.id);
+    if (error) { setNotice(error.message); return; }
+    await loadItems();
+    setNotice(nextStatus === "paused" ? "Shpallja u pezullua." : "Shpallja u dërgua përsëri për kontroll.");
   };
   return (
     <main className="v2-seller-studio">
@@ -6046,7 +6060,7 @@ function Dashboard({ listings }: { listings: ListingDraft[] }) {
         {[
           [
             "Shpallje aktive",
-            String(merged.filter((x) => x.status === "Aktiv").length),
+            String(items.filter((x) => x.status === "active").length),
             "Gjithsej në katalog",
           ],
           ["Oferta në pritje", "6", "2 kërkojnë përgjigje"],
@@ -6079,7 +6093,7 @@ function Dashboard({ listings }: { listings: ListingDraft[] }) {
           <header>
             <div>
               <h2>Inventari</h2>
-              <p>{merged.length} produkte · çdo ndryshim ruhet menjëherë</p>
+              <p>{items.length} produkte · çdo ndryshim ruhet menjëherë</p>
             </div>
             <label>
               <Search />
@@ -6091,16 +6105,16 @@ function Dashboard({ listings }: { listings: ListingDraft[] }) {
             </label>
           </header>
           <div className="v2-inventory-list">
-            {visible.map((x) => (
+            {loadingItems ? <p className="v2-inventory-empty">Duke ngarkuar shpalljet…</p> : itemsError ? <p className="v2-inventory-empty">{itemsError}</p> : !visible.length ? <p className="v2-inventory-empty">Nuk ke ende shpallje. Shto produktin e parë.</p> : visible.map((x) => (
               <article key={x.id}>
-                <img src={x.image} alt="" />
+                <img src={x.images[0] || "/assets/bag-one.webp"} alt="" />
                 <div>
                   <small>{x.brand}</small>
                   <b>{x.title}</b>
                   <em>
                     {x.condition} ·{" "}
-                    <strong className={x.status === "Aktiv" ? "active" : ""}>
-                      {x.status}
+                    <strong className={x.status === "active" ? "active" : ""}>
+                      {statusLabel(x.status)}
                     </strong>
                   </em>
                 </div>
@@ -6111,7 +6125,7 @@ function Dashboard({ listings }: { listings: ListingDraft[] }) {
                 <span>
                   <small>AKTIVITETI</small>
                   <b>
-                    {x.views} shikime · {x.saves} ruajtje
+                    {x.viewsCount} shikime
                   </b>
                 </span>
                 <div className="v2-inventory-actions">
@@ -6119,12 +6133,12 @@ function Dashboard({ listings }: { listings: ListingDraft[] }) {
                     <TrendingUp />
                     {boostedIds.includes(x.id) ? "Boost aktiv" : "Boost"}
                   </button>
-                  <button onClick={() => setEditing({ ...x })}>
+                  <button onClick={() => { setEditing({ ...x }); setReplacementImages([]); }}>
                     <Pencil />
                     Ndrysho
                   </button>
-                  <button onClick={() => toggleItem(x.id)}>
-                    {x.status === "Aktiv" ? "Pezullo" : "Aktivizo"}
+                  <button onClick={() => void toggleItem(x)}>
+                    {x.status === "active" ? "Pezullo" : "Dërgo për kontroll"}
                   </button>
                   <Link href={`/listing/${x.id}`}>
                     <Eye />
@@ -6299,7 +6313,17 @@ function Dashboard({ listings }: { listings: ListingDraft[] }) {
               <span>NDRYSHO SHPALLJEN</span>
               <h2>{editing.title}</h2>
               <div className="v2-edit-listing-grid">
-                <img src={editing.image} alt="" />
+                <div className="v2-edit-listing-photo">
+                  <img src={replacementImages[0] || editing.images[0] || "/assets/bag-one.webp"} alt="" />
+                  <label className="v2-photo-replace">
+                    Zëvendëso fotografitë
+                    <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => {
+                      const files = Array.from(event.target.files || []);
+                      void Promise.all(files.map((file) => new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(new Error("Fotografia nuk u lexua.")); reader.readAsDataURL(file); }))).then(setReplacementImages).catch(() => setNotice("Fotografitë nuk u lexuan."));
+                    }} />
+                  </label>
+                  <small>{replacementImages.length ? `${replacementImages.length} fotografi të reja do të zëvendësojnë galerinë.` : "Lëri si janë ose ngarko një galeri të re."}</small>
+                </div>
                 <div>
                   <label>
                     Titulli
@@ -6333,22 +6357,54 @@ function Dashboard({ listings }: { listings: ListingDraft[] }) {
                     />
                   </label>
                   <label>
-                    Statusi
-                    <select
-                      value={editing.status}
-                      onChange={(e) =>
-                        setEditing({
-                          ...editing,
-                          status: e.target.value as SellerItem["status"],
-                        })
-                      }
-                    >
-                      <option>Aktiv</option>
-                      <option>Pezulluar</option>
-                      <option>Draft</option>
+                    Çmimi fillestar (€)
+                    <input inputMode="numeric" value={editing.retailPrice || ""} onChange={(e) => setEditing({ ...editing, retailPrice: Number(e.target.value.replace(/\D/g, "")) })} />
+                  </label>
+                  <label>
+                    Kategoria
+                    <input value={editing.category} onChange={(e) => setEditing({ ...editing, category: e.target.value })} />
+                  </label>
+                  <label>
+                    Gjendja
+                    <select value={editing.condition} onChange={(e) => setEditing({ ...editing, condition: e.target.value })}>
+                      <option>I ri</option><option>Si i ri</option><option>Shumë mirë</option><option>Mirë</option><option>I dëmtuar</option><option>Shumë i përdorur</option>
                     </select>
                   </label>
+                  <label>
+                    Gjinia
+                    <select value={editing.gender} onChange={(e) => setEditing({ ...editing, gender: e.target.value })}>
+                      <option>Femra</option><option>Meshkuj</option><option>Unisex</option><option>Fëmijë</option>
+                    </select>
+                  </label>
+                  <label>
+                    Madhësia
+                    <input value={editing.size} onChange={(e) => setEditing({ ...editing, size: e.target.value })} />
+                  </label>
+                  <label>
+                    Ngjyra
+                    <input value={editing.color} onChange={(e) => setEditing({ ...editing, color: e.target.value })} />
+                  </label>
+                  <label>
+                    Materiali
+                    <input value={editing.material} onChange={(e) => setEditing({ ...editing, material: e.target.value })} />
+                  </label>
+                  <label>
+                    Referenca / kodi
+                    <input value={editing.reference} onChange={(e) => setEditing({ ...editing, reference: e.target.value })} />
+                  </label>
+                  <label>
+                    Qyteti
+                    <input value={editing.city} onChange={(e) => setEditing({ ...editing, city: e.target.value })} />
+                  </label>
                 </div>
+              </div>
+              <label className="v2-edit-description">
+                Përshkrimi
+                <textarea value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} />
+              </label>
+              <div className="v2-edit-options">
+                <label><input type="checkbox" checked={editing.negotiable} onChange={(e) => setEditing({ ...editing, negotiable: e.target.checked })} /> Pranoj oferta për çmimin</label>
+                <label><input type="checkbox" checked={editing.shippingAvailable} onChange={(e) => setEditing({ ...editing, shippingAvailable: e.target.checked })} /> Dërgesa është në dispozicion</label>
               </div>
               <div>
                 <button
@@ -7667,19 +7723,20 @@ export default function Marketplace() {
         sellerSlug: account?.username || undefined,
         sellerAvatar: account?.avatarUrl || null,
         size: listing.size || "Një madhësi",
-        city: account?.city || "Kosovë",
+        city: listing.city || account?.city || "Kosovë",
         verified: Boolean(account?.sellerVerified),
         label: "E re",
         category: listing.category || "Modë",
-        color: "Nuk është specifikuar",
+        color: listing.color || "Nuk është specifikuar",
         condition: listing.condition || "Mirë",
         gender: listing.gender,
         authLevel: "none",
-        description:
-          "Produkt i publikuar nga shitësi. Fotografitë paraqesin gjendjen aktuale.",
+        material: listing.material || "Nuk është specifikuar",
+        reference: listing.reference || undefined,
+        description: listing.description || "Produkt i publikuar nga shitësi. Fotografitë paraqesin gjendjen aktuale.",
         publishedAt: listing.publishedAt,
-        negotiable: true,
-        shipping: true,
+        negotiable: listing.negotiable ?? true,
+        shipping: listing.shippingAvailable ?? true,
       }),
     );
     const remote = publicListings.map(publicListingToProduct);
@@ -7983,7 +8040,7 @@ export default function Marketplace() {
     );
   else if (path === "/profile" || path === "/dashboard")
     content = (
-      <ProfilePage listings={signedIn ? ownListings : []} dashboardListings={signedIn ? listings : []} account={account} />
+      <ProfilePage listings={signedIn ? ownListings : []} account={account} />
     );
   else
     content = (
