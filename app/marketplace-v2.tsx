@@ -88,6 +88,7 @@ type Product = {
   position: string;
   seller: string;
   size: string;
+  sizes?: string[];
   city: string;
   verified?: boolean;
   label?: string;
@@ -1273,6 +1274,17 @@ const productReference = (product: Product) =>
 const sellerHref = (product: Product) =>
   `/seller/${encodeURIComponent(product.sellerSlug || product.seller.toLowerCase().replace(/[^a-z0-9]+/g, "-"))}`;
 
+const cleanImportedText = (value?: string) => (value || "")
+  .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+  .replace(/<\s*\/?\s*(p|div|li|ul|ol)\b[^>]*>/gi, "\n")
+  .replace(/<[^>]*>/g, " ")
+  .replace(/&nbsp;/gi, " ")
+  .replace(/&amp;/gi, "&")
+  .replace(/\r/g, "")
+  .replace(/[ \t]{2,}/g, " ")
+  .replace(/\n{3,}/g, "\n\n")
+  .trim();
+
 const publicListingToProduct = (listing: PublicListing): Product => ({
   id: listing.id,
   sellerId: listing.sellerId,
@@ -1286,6 +1298,7 @@ const publicListingToProduct = (listing: PublicListing): Product => ({
   sellerSlug: listing.sellerSlug,
   sellerAvatar: listing.sellerAvatar,
   size: listing.size,
+  sizes: listing.sizes,
   city: listing.city,
   verified: listing.sellerVerified,
   category: listing.category,
@@ -1359,6 +1372,15 @@ function AuthModal({
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [selectedSize, setSelectedSize] = useState("");
+  const availableSizes = useMemo(() => {
+    if (!p) return [];
+    const values = p.sizes?.length ? p.sizes : p.size.split(",");
+    return [...new Set(values.map(value => value.trim()).filter(value => value && value !== "Një madhësi"))];
+  }, [p]);
+  useEffect(() => {
+    setSelectedSize(availableSizes.length === 1 ? availableSizes[0] : "");
+  }, [p?.id, availableSizes]);
   const [loading, setLoading] = useState(false);
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -3241,6 +3263,17 @@ function ListingPage({
       setNotice("Ndarja u anulua.");
     }
   };
+  const requireSize = () => {
+    if (availableSizes.length && !selectedSize) {
+      setNotice("Zgjidh madhësinë para se të vazhdosh.");
+      document.querySelector(".v2-size-picker")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return false;
+    }
+    if (selectedSize) sessionStorage.setItem(`clozer:selected-size:${p.id}`, selectedSize);
+    return true;
+  };
+  const purchase = () => { if (requireSize()) buy(p.id); };
+  const addSelected = () => { if (requireSize()) add(p.id); };
   return (
     <main className="v2-page v2-listing">
       <div className="v2-listing-top">
@@ -3354,6 +3387,28 @@ function ListingPage({
             €{p.price.toLocaleString("sq-AL")}
             <small>Mbrojtja e blerësit përfshihet</small>
           </h2>
+          {availableSizes.length > 0 && (
+            <fieldset className="v2-size-picker">
+              <legend>
+                <span>Zgjidh madhësinë</span>
+                {selectedSize && <b>{selectedSize}</b>}
+              </legend>
+              <div>
+                {availableSizes.map(size => (
+                  <button
+                    type="button"
+                    key={size}
+                    className={selectedSize === size ? "active" : ""}
+                    aria-pressed={selectedSize === size}
+                    onClick={() => setSelectedSize(size)}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+              {!selectedSize && availableSizes.length > 1 && <small>Kërkohet para blerjes</small>}
+            </fieldset>
+          )}
           <button
             className="v2-auth-report-trigger"
             onClick={() => setReport(true)}
@@ -3364,8 +3419,8 @@ function ListingPage({
               <ChevronRight />
             </span>
           </button>
-          <button className="v2-pill dark wide" onClick={() => buy(p.id)}>
-            Bli tani · €{p.price.toLocaleString("sq-AL")}
+          <button className="v2-pill dark wide" onClick={purchase}>
+            {availableSizes.length > 1 && !selectedSize ? "Zgjidh madhësinë" : `Bli tani · €${p.price.toLocaleString("sq-AL")}`}
           </button>
           {p.negotiable !== false && (
             <button
@@ -3375,7 +3430,7 @@ function ListingPage({
               Bëj ofertë
             </button>
           )}
-          <button className="v2-pill soft wide" onClick={() => add(p.id)}>
+          <button className="v2-pill soft wide" onClick={addSelected}>
             <ShoppingBag />
             Shto në shportë
           </button>
@@ -3494,7 +3549,7 @@ function ListingPage({
           </div>
           <h3>Përshkrimi</h3>
           <p>
-            {p.description ||
+            {cleanImportedText(p.description) ||
               "Produkti është paraqitur sipas informacionit të dhënë nga shitësi. Kërko fotografi shtesë për çdo detaj që nuk shihet qartë."}
           </p>
         </div>
@@ -3617,8 +3672,8 @@ function ListingPage({
             Ofertë
           </button>
         )}
-        <button className="buy" onClick={() => buy(p.id)}>
-          Bli tani
+        <button className="buy" onClick={purchase}>
+          {availableSizes.length > 1 && !selectedSize ? "Zgjidh masën" : "Bli tani"}
         </button>
       </div>
       <AnimatePresence>
