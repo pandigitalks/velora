@@ -3705,13 +3705,40 @@
 }
 .v2-mobile-menu {
   width: min(360px, 88vw);
-  height: 100%;
+  height: 100dvh;
   background: #fff;
-  padding: 21px;
+  padding: 21px 21px calc(21px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+.v2-menu-bg {
+  z-index: 1200;
+}
+.v2-mobile-menu-heading {
+  display: block;
+  margin: 18px 0 7px;
+  color: #898989;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .16em;
+}
+.v2-mobile-departments {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 8px !important;
+}
+.v2-mobile-departments a {
+  min-height: 42px;
+  border: 1px solid var(--v2-line);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: #111;
+  font-size: 10px;
+  font-weight: 750;
 }
 .v2-mobile-menu > div {
   display: flex;
