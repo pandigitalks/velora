@@ -3082,6 +3082,25 @@
   color: #777;
   margin-top: 3px;
 }
+.v2-cod-payment {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 0;
+}
+.v2-cod-payment > svg {
+  width: 21px;
+  height: 21px;
+}
+.v2-cod-payment span {
+  display: flex;
+  flex-direction: column;
+}
+.v2-form-error {
+  display: block;
+  color: #b42318 !important;
+  line-height: 1.45;
+}
 .v2-card-fields {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr;
