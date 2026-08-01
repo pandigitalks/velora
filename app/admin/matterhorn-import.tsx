@@ -5,8 +5,10 @@ import { Check, ChevronLeft, ChevronRight, Download, LoaderCircle, PackageSearch
 
 type CatalogProduct = {
   id: string; name: string; name_without_number?: string; description?: string; brand?: string;
-  category_name?: string; color?: string; stock_total?: number; images?: string[];
-  variants?: { name: string; stock: number }[]; cost: number; final_price: number; imported: boolean;
+  category_name?: string; category_path?: string; category_id?: string | number; color?: string; stock_total?: number; images?: string[];
+  description?: string; size_table_txt?: string; prices?: Record<string, number>;
+  variants?: { variant_uid: string | number; name: string; stock: number; max_processing_time?: number; ean?: string }[];
+  cost: number; final_price: number; imported: boolean;
 };
 type MatterhornCategory = { id: string; name: string; path: string };
 
@@ -85,11 +87,20 @@ export default function MatterhornImport() {
     try {
       const response = await fetch("/api/admin/matterhorn/import", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: selected, shipping, profit }),
+        body: JSON.stringify({
+          ids: selected,
+          products: items.filter(item => selected.includes(item.id)),
+          shipping,
+          profit,
+        }),
       });
       const payload = await readApiResponse(response);
       const failures = (payload.results || []).filter((result: { status: string }) => result.status === "failed");
-      setMessage(`${payload.imported} produkte u importuan te Clozer Shop.${failures.length ? ` ${failures.length} dështuan — provo përsëri.` : ""}`);
+      const failureDetails = failures
+        .slice(0, 3)
+        .map((failure: { id: string; error?: string }) => `#${failure.id}: ${failure.error || "Gabim i panjohur"}`)
+        .join(" · ");
+      setMessage(`${payload.imported} produkte u importuan te Clozer Shop.${failures.length ? ` ${failures.length} dështuan. ${failureDetails}` : ""}`);
       setItems(current => current.map(item => selected.includes(item.id) && !failures.some((failure: { id: string }) => failure.id === item.id) ? { ...item, imported: true } : item));
       setSelected(failures.map((failure: { id: string }) => failure.id));
     } catch (error) { setMessage(error instanceof Error ? error.message : "Importi dështoi."); }
