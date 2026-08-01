@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "../../../../../lib/admin-auth";
 import { createAdminSupabaseClient } from "../../../../../lib/supabase/admin";
-import { matterhornCategorySlug, matterhornRequest, MINIMUM_PROFIT, safeImageUrl, sellingPrice, slugifyBrand, type MatterhornProduct } from "../../../../../lib/matterhorn";
+import { isExcludedLingerie, matterhornCategorySlug, matterhornRequest, MINIMUM_PROFIT, safeImageUrl, sellingPrice, slugifyBrand, type MatterhornProduct } from "../../../../../lib/matterhorn";
 
 export const maxDuration = 300;
 
@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
     for (const id of ids) {
       try {
         const product = await matterhornRequest<MatterhornProduct>(`/ITEMS/${encodeURIComponent(id)}`);
+        if (isExcludedLingerie(product)) throw new Error("Produktet lingerie janë të përjashtuara nga CLOZER.");
         const cost = Number(product.prices?.EUR || 0);
         if (!(cost > 0)) throw new Error("Produkti nuk ka çmim EUR.");
         const categorySlug = matterhornCategorySlug(product);

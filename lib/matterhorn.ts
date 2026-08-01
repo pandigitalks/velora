@@ -74,6 +74,18 @@ export function matterhornCategorySlug(product: MatterhornProduct) {
   return "women-clothing";
 }
 
+export function isExcludedLingerie(value: Pick<MatterhornProduct, "category_path" | "category_name" | "name"> | Record<string, unknown>) {
+  const text = [
+    value.category_path,
+    value.category_name,
+    value.name,
+    value.path,
+    value.full_path,
+    value.parent_name,
+  ].filter(Boolean).join(" ").toLowerCase();
+  return /lingerie|underwear|nightwear|sleepwear|nightgown|pyjama|pajama|\bbra\b|knicker|panties|thong|corset|bodysuit|erotic|sexy|shapewear|hosiery|stocking|tights/.test(text);
+}
+
 export function safeImageUrl(value: string) {
   return value.startsWith("http://") ? `https://${value.slice(7)}` : value;
 }

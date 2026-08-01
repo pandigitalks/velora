@@ -8,6 +8,7 @@ type CatalogProduct = {
   category_name?: string; color?: string; stock_total?: number; images?: string[];
   variants?: { name: string; stock: number }[]; cost: number; final_price: number; imported: boolean;
 };
+type MatterhornCategory = { id: string; name: string; path: string };
 
 const money = (value: number) => new Intl.NumberFormat("sq-AL", { style: "currency", currency: "EUR" }).format(value || 0);
 
@@ -21,18 +22,29 @@ export default function MatterhornImport() {
   const [search, setSearch] = useState("");
   const [shipping, setShipping] = useState(24);
   const [profit, setProfit] = useState(8);
+  const [categories, setCategories] = useState<MatterhornCategory[]>([]);
+  const [categoryId, setCategoryId] = useState("");
 
   const load = async (targetPage = page) => {
     setLoading(true); setMessage(""); setSelected([]);
     try {
-      const response = await fetch(`/api/admin/matterhorn/catalog?page=${targetPage}&limit=24`, { cache: "no-store" });
+      const categoryQuery = categoryId ? `&category_id=${encodeURIComponent(categoryId)}` : "";
+      const response = await fetch(`/api/admin/matterhorn/catalog?page=${targetPage}&limit=24${categoryQuery}`, { cache: "no-store" });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Katalogu nuk u ngarkua.");
       setItems(payload.items || []); setPage(targetPage);
     } catch (error) { setMessage(error instanceof Error ? error.message : "Katalogu nuk u ngarkua."); }
     finally { setLoading(false); }
   };
-  useEffect(() => { void load(1); }, []);
+  useEffect(() => {
+    void Promise.all([
+      load(1),
+      fetch("/api/admin/matterhorn/categories", { cache: "no-store" })
+        .then(response => response.json())
+        .then(payload => setCategories(payload.categories || [])),
+    ]);
+  }, []);
+  useEffect(() => { if (categories.length) void load(1); }, [categoryId]);
 
   const shown = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -71,6 +83,13 @@ export default function MatterhornImport() {
       <label>Fitimi minimal (€)<input type="number" min="8" step="0.5" value={profit} onChange={event => setProfit(Math.max(8, Number(event.target.value)))}/></label>
     </div>
     <div className="matterhorn-toolbar">
+      <label className="matterhorn-category-filter">
+        <span>Kategoria</span>
+        <select value={categoryId} onChange={event => setCategoryId(event.target.value)}>
+          <option value="">Të gjitha pa lingerie</option>
+          {categories.map(category => <option key={category.id} value={category.id}>{category.path ? `${category.path} / ` : ""}{category.name}</option>)}
+        </select>
+      </label>
       <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Kërko sipas emrit, markës ose kategorisë…"/>
       <button onClick={() => setSelected(allSelected ? [] : selectable)}><Check size={15}/>{allSelected ? "Hiq të gjitha" : "Zgjidh faqen"}</button>
       <button className="import" disabled={!selected.length || importing} onClick={() => void importSelected()}>{importing ? <LoaderCircle className="spin"/> : <Download/>}{importing ? "Duke importuar…" : `Importo ${selected.length || ""}`}</button>

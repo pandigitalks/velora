@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "../../../../../lib/admin-auth";
 import { createAdminSupabaseClient } from "../../../../../lib/supabase/admin";
-import { matterhornRequest, sellingPrice, type MatterhornProduct } from "../../../../../lib/matterhorn";
+import { isExcludedLingerie, matterhornRequest, sellingPrice, type MatterhornProduct } from "../../../../../lib/matterhorn";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       const value = query.get(key); if (value) params.set(key, value);
     }
     const payload = await matterhornRequest<MatterhornProduct[] | { items?: MatterhornProduct[] }>(`/ITEMS/?${params}`);
-    const items = Array.isArray(payload) ? payload : payload.items || [];
+    const items = (Array.isArray(payload) ? payload : payload.items || []).filter(item => !isExcludedLingerie(item));
     const ids = items.map(item => String(item.id));
     const admin = createAdminSupabaseClient();
     const { data: existing } = ids.length
