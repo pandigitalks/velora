@@ -69,6 +69,7 @@ import {
   departments,
   findCategory,
 } from "../lib/velora/categories";
+import { canonicalPath } from "../lib/routes";
 
 type ProductId = string | number;
 
@@ -2293,10 +2294,7 @@ function HomePage({
               Shop the edit
               <ArrowRight />
             </Link>
-            <Link
-              href={signedIn ? "/sell" : "/?login=sell"}
-              className="v2-pill glass"
-            >
+            <Link href="/sell" className="v2-pill glass">
               Sell a piece
             </Link>
           </div>
@@ -2391,23 +2389,6 @@ function HomePage({
           <span>VIVIENNE WESTWOOD</span>
           <Link href="/explore?sort=new">
             Discover new arrivals
-            <ArrowRight />
-          </Link>
-        </div>
-      </section>
-      <section className="v2-home-poster v2-section">
-        <img
-          src="/assets/hero-editorial.webp"
-          alt="CLOZER editorial"
-          loading="lazy"
-          decoding="async"
-        />
-        <div>
-          <span>CLOZER · SECOND LIVES</span>
-          <h2>Stili nuk mbaron.<br />Ai vazhdon.</h2>
-          <p>Pjesë të zgjedhura, histori të reja dhe modë që meriton të vishet përsëri.</p>
-          <Link href="/explore" className="v2-pill light">
-            Zbulo koleksionin
             <ArrowRight />
           </Link>
         </div>
@@ -5617,7 +5598,7 @@ function ProfilePage({
   listings: Product[];
   account: AccountProfile | null;
 }) {
-  const path = usePathname();
+  const path = canonicalPath(usePathname());
   const [tab, setTab] = useState("Garderoba");
   const [stats, setStats] = useState({ active: listings.length, sold: 0 });
   useEffect(() => {
@@ -7647,7 +7628,7 @@ function Footer() {
 }
 
 function MobileNav({ cart: _, signedIn }: { cart: number; signedIn: boolean }) {
-  const p = usePathname();
+  const p = canonicalPath(usePathname());
   const items = [
     { Icon: Home, label: "Kreu", href: "/", protected: false },
     { Icon: Search, label: "Eksploro", href: "/explore", protected: false },
@@ -7693,7 +7674,7 @@ function MobileNav({ cart: _, signedIn }: { cart: number; signedIn: boolean }) {
 }
 
 export default function Marketplace() {
-  const path = usePathname();
+  const path = canonicalPath(usePathname());
   const router = useRouter();
   const [lang, setLang] = usePersistent<Lang>("velora-language", "sq");
   const [signedIn, setSignedIn] = useState(false);
