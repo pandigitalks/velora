@@ -20,27 +20,18 @@ export async function GET(request: NextRequest) {
     if (!(await requireAdmin())) return NextResponse.json({ error: "Nuk ke qasje." }, { status: 403 });
     const query = request.nextUrl.searchParams;
     const page = Math.max(1, Number(query.get("page") || 1));
-    const limit = Math.min(100, Math.max(12, Number(query.get("limit") || 24)));
+    const limit = Math.min(30, Math.max(20, Number(query.get("limit") || 30)));
     const filters = new URLSearchParams();
     for (const key of ["brand_id", "category_id", "new_collection"] as const) {
       const value = query.get(key); if (value) filters.set(key, value);
     }
-    const needed = page * limit;
-    const allowed: MatterhornProduct[] = [];
-    const upstreamLimit = 200;
-
-    // Matterhorn often puts lingerie first. Filter while paging upstream so a
-    // CLOZER page is not empty merely because its first 24 supplier items are excluded.
-    for (let upstreamPage = 1; upstreamPage <= 10 && allowed.length < needed; upstreamPage += 1) {
-      const params = new URLSearchParams(filters);
-      params.set("page", String(upstreamPage));
-      params.set("limit", String(upstreamLimit));
-      const payload = await matterhornRequest<unknown>(`/ITEMS/?${params}`);
-      const batch = productList(payload);
-      allowed.push(...batch.filter(item => !isExcludedLingerie(item)));
-      if (batch.length < upstreamLimit) break;
-    }
-    const items = allowed.slice((page - 1) * limit, page * limit);
+    // One supplier request keeps the admin page fast. We fetch a wider batch,
+    // remove lingerie, then show at most 30 products from that batch.
+    const params = new URLSearchParams(filters);
+    params.set("page", String(page));
+    params.set("limit", "120");
+    const payload = await matterhornRequest<unknown>(`/ITEMS/?${params}`);
+    const items = productList(payload).filter(item => !isExcludedLingerie(item)).slice(0, limit);
     const ids = items.map(item => String(item.id));
     const admin = createAdminSupabaseClient();
     const { data: existing } = ids.length

@@ -29,7 +29,7 @@ export default function MatterhornImport() {
     setLoading(true); setMessage(""); setSelected([]);
     try {
       const categoryQuery = categoryId ? `&category_id=${encodeURIComponent(categoryId)}` : "";
-      const response = await fetch(`/api/admin/matterhorn/catalog?page=${targetPage}&limit=24${categoryQuery}`, { cache: "no-store" });
+      const response = await fetch(`/api/admin/matterhorn/catalog?page=${targetPage}&limit=30${categoryQuery}`, { cache: "no-store" });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Katalogu nuk u ngarkua.");
       setItems(payload.items || []); setPage(targetPage);
@@ -75,7 +75,7 @@ export default function MatterhornImport() {
   return <section className="matterhorn-admin">
     <div className="matterhorn-head">
       <div><span>MATTERHORN WHOLESALE API</span><h2>Zgjidh produktet për Clozer Shop</h2><p>Produktet publikohen vetëm pasi t’i selektosh. Fotot, detajet, marka, madhësitë dhe stoku ruhen automatikisht.</p></div>
-      <button onClick={() => void load()} disabled={loading}><RefreshCw size={16}/> Rifresko</button>
+      <button onClick={() => void load(page + 1)} disabled={loading}><RefreshCw size={16}/> Produkte tjera</button>
     </div>
     <div className="matterhorn-pricing">
       <div><small>FORMULA E ÇMIMIT</small><strong>Furnitori + transporti + fitimi</strong><p>Shembull: 10 € + {shipping} € + {Math.max(8, profit)} € = {money(10 + shipping + Math.max(8, profit))}</p></div>
@@ -105,6 +105,6 @@ export default function MatterhornImport() {
         </article>;
       })}
     </div> : <div className="matterhorn-loading"><PackageSearch/><p>Nuk u gjet asnjë produkt në këtë faqe.</p></div>}
-    <div className="matterhorn-pages"><button disabled={page <= 1 || loading} onClick={() => void load(page - 1)}><ChevronLeft/> Para</button><span>Faqja {page}</span><button disabled={loading || items.length < 24} onClick={() => void load(page + 1)}>Tjetra <ChevronRight/></button></div>
+    <div className="matterhorn-pages"><button disabled={page <= 1 || loading} onClick={() => void load(page - 1)}><ChevronLeft/> Para</button><span>Grupi {page}</span><button disabled={loading} onClick={() => void load(page + 1)}>Produkte tjera <ChevronRight/></button></div>
   </section>;
 }
