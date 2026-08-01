@@ -28,6 +28,7 @@ export type SellerListing = ListingInput & {
   viewsCount: number;
   publishedAt: string | null;
   images: string[];
+  sizes: string[];
 };
 
 export type PublicListing = Omit<SellerListing, "retailPrice" | "reference"> & {
@@ -64,10 +65,11 @@ type ListingRow = {
   category: { slug: string; name_sq: string } | null;
   seller?: { full_name: string | null; username: string | null; avatar_url: string | null; seller_verified: boolean } | null;
   listing_images: Array<{ storage_path: string; sort_order: number }>;
+  listing_variants?: Array<{ name: string; stock: number | string }>;
   listing_boosts?: Array<{ tier: string; status: string; expires_at: string | null }>;
 };
 
-const listingSelect = "id,seller_id,title,description,price,retail_price,reference_code,condition,size,color,material,gender,city,status,views_count,published_at,authenticity_status,shipping_available,negotiable,brand:brands(name),category:categories(slug,name_sq),listing_images(storage_path,sort_order)";
+const listingSelect = "id,seller_id,title,description,price,retail_price,reference_code,condition,size,color,material,gender,city,status,views_count,published_at,authenticity_status,shipping_available,negotiable,brand:brands(name),category:categories(slug,name_sq),listing_images(storage_path,sort_order),listing_variants(name,stock)";
 
 const sellerSlug = (name: string) => name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
@@ -95,6 +97,7 @@ const asInput = (supabase: ReturnType<typeof createClient>, row: ListingRow): Se
   shippingAvailable: row.shipping_available,
   image: publicUrls(supabase, row.listing_images)[0] || "",
   images: publicUrls(supabase, row.listing_images),
+  sizes: (row.listing_variants || []).filter(variant => Number(variant.stock) > 0).map(variant => variant.name),
   status: row.status,
   viewsCount: Number(row.views_count || 0),
   publishedAt: row.published_at,
