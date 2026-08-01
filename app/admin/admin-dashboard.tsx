@@ -9,6 +9,7 @@ import {
   Command, FileCheck2, Gauge, LayoutDashboard, Menu, MessageSquare,
   MoreHorizontal, PackageCheck, Search, Settings, ShieldCheck, ShoppingBag, Download, RefreshCw, SlidersHorizontal,
   Sparkles, TrendingUp, Users, X, Newspaper, Plus, Pencil, Trash2,
+  Gift, Power, Trophy, Copy, Share2,
 } from "lucide-react";
 import "./admin.css";
 
@@ -26,14 +27,14 @@ const sections = [
   ["seller-applications", "Aplikimet e shitësve", FileCheck2],
   ["listings", "Listimet", ShoppingBag], ["orders", "Porositë", PackageCheck],
   ["messages", "Mesazhet", MessageSquare], ["authenticity", "Autenticiteti", ShieldCheck],
-  ["catalog", "Katalogu", Boxes], ["blog", "Blogu", Newspaper], ["activity", "Aktiviteti", Activity], ["settings", "Konfigurimi", Settings],
+  ["catalog", "Katalogu", Boxes], ["blog", "Blogu", Newspaper], ["waitlist", "Waitlist", Gift], ["activity", "Aktiviteti", Activity], ["settings", "Konfigurimi", Settings],
 ] as const;
 
 const money = (value: number) => new Intl.NumberFormat("sq-AL", { style: "currency", currency: "EUR" }).format(value || 0);
 const date = (value?: string) => value ? new Intl.DateTimeFormat("sq-AL", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value)) : "—";
 const label = (value?: string) => (value || "—").replaceAll("_", " ");
 
-export default function AdminDashboard({ initialData, initialModerationQueue, initialSellerApplications, initialBlogPosts, admin }: { initialData: Snapshot; initialModerationQueue: Row[]; initialSellerApplications: Row[]; initialBlogPosts: Row[]; admin: Row }) {
+export default function AdminDashboard({ initialData, initialModerationQueue, initialSellerApplications, initialBlogPosts, initialWaitlist, initialSiteSettings, admin }: { initialData: Snapshot; initialModerationQueue: Row[]; initialSellerApplications: Row[]; initialBlogPosts: Row[]; initialWaitlist: Row[]; initialSiteSettings: Row; admin: Row }) {
   const [active, setActive] = useState("overview");
   const [query, setQuery] = useState("");
   const [sidebar, setSidebar] = useState(false);
@@ -58,7 +59,7 @@ export default function AdminDashboard({ initialData, initialModerationQueue, in
   }, [active, data, query, sellerApplications, statusFilter]);
   const refresh = () => { setRefreshing(true); window.setTimeout(() => window.location.reload(), 250); };
   useEffect(() => { const timer = window.setInterval(refresh, 60000); return () => window.clearInterval(timer); }, []);
-  const exportCsv = () => { const columns = Array.from(new Set(rows.flatMap(row => Object.keys(row)))); const csv = [columns.join(","), ...rows.map(row => columns.map(key => JSON.stringify(row[key] ?? "")).join(","))].join("\n"); const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([csv], {type:"text/csv"})); link.download = `clozer-${active}.csv`; link.click(); URL.revokeObjectURL(link.href); };
+  const exportCsv = () => { const exportRows = rows as Row[]; const columns: string[] = Array.from(new Set(exportRows.flatMap((row: Row) => Object.keys(row)))); const csv = [columns.join(","), ...exportRows.map((row: Row) => columns.map((key: string) => JSON.stringify(row[key] ?? "")).join(","))].join("\n"); const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([csv], {type:"text/csv"})); link.download = `clozer-${active}.csv`; link.click(); URL.revokeObjectURL(link.href); };
 
   return <div className="admin-shell">
     <aside className={`admin-sidebar ${sidebar ? "is-open" : ""}`}>
@@ -82,7 +83,7 @@ export default function AdminDashboard({ initialData, initialModerationQueue, in
       <div className="admin-content">
         <div className="page-heading"><div><p><Command size={14}/> ADMIN / {active.toUpperCase()}</p><h1>{title}</h1><span>Kontroll i plotë dhe të dhëna në kohë reale për Clozer.</span></div><div className="live"><i/> LIVE <small>Përditësuar {new Date(data.generated_at).toLocaleTimeString("sq-AL", {hour:"2-digit",minute:"2-digit"})}</small></div></div>
         {notice && <div className="moderation-notice">{notice}</div>}
-        {active === "overview" ? <Overview data={data} /> : active === "activity" ? <ActivityPanel data={data} /> : active === "settings" ? <SettingsPanel /> : active === "blog" ? <BlogManager initialPosts={initialBlogPosts} query={query} /> : active === "seller-applications" ? <SellerApplications rows={rows} busy={moderating} onReview={async (application, decision) => {
+        {active === "overview" ? <Overview data={data} /> : active === "activity" ? <ActivityPanel data={data} /> : active === "settings" ? <SettingsPanel /> : active === "waitlist" ? <WaitlistManager initialEntries={initialWaitlist} initialSettings={initialSiteSettings} query={query} /> : active === "blog" ? <BlogManager initialPosts={initialBlogPosts} query={query} /> : active === "seller-applications" ? <SellerApplications rows={rows} busy={moderating} onReview={async (application, decision) => {
           const note = decision === "rejected" ? window.prompt("Shkruaj arsyen e refuzimit:")?.trim() || "" : "";
           if (decision === "rejected" && !note) return;
           setModerating(application.user_id);
@@ -242,6 +243,59 @@ function MiniTable({ rows, type, onSelect }: { rows: Row[]; type: string; onSele
 
 function ActivityPanel({data}:{data:Snapshot}) { return <section className="panel admin-detail"><PanelTitle icon={Activity} title="Aktiviteti i fundit" subtitle="Ngjarjet nga përdoruesit, listimet dhe porositë"/><ActivityFeed data={data}/></section>; }
 function SettingsPanel() { return <section className="panel admin-detail"><PanelTitle icon={Settings} title="Konfigurimi i panelit" subtitle="Kontrollet kryesore të administrimit"/><p>Moderimi i listimeve dhe aplikimeve të shitësve bëhet nga seksionet përkatëse. Të dhënat rifreskohen automatikisht çdo minutë.</p><p>Siguria e llogarive menaxhohet nga Supabase Auth; mbrojtja ndaj fjalëkalimeve të rrjedhura duhet aktivizuar në konfigurimin e Auth.</p></section>; }
+
+function WaitlistManager({ initialEntries, initialSettings, query }: { initialEntries: Row[]; initialSettings: Row; query: string }) {
+  const [entries, setEntries] = useState(initialEntries);
+  const [enabled, setEnabled] = useState(Boolean(initialSettings.waitlist_enabled));
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const referrals = useMemo(() => entries.reduce((map, entry) => ({ ...map, [entry.referred_by]: (map[entry.referred_by] || 0) + 1 }), {} as Record<string, number>), [entries]);
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? entries.filter(entry => JSON.stringify(entry).toLowerCase().includes(q)) : entries;
+  }, [entries, query]);
+  const toggle = async () => {
+    setBusy(true); setMessage("");
+    const next = !enabled;
+    const { error } = await createClient().from("site_settings").update({ waitlist_enabled: next }).eq("id", "global");
+    setBusy(false);
+    if (error) { setMessage("Gabim: " + error.message); return; }
+    setEnabled(next);
+    setMessage(next ? "Waitlist-i u aktivizua. Homepage tani shfaq faqen e pritjes." : "Waitlist-i u çaktivizua. Homepage tani shfaq marketplace-in.");
+  };
+  const winner = async (entry: Row) => {
+    const next = !entry.is_winner;
+    setBusy(true); setMessage("");
+    const { data, error } = await createClient().from("waitlist_entries").update({ is_winner: next, winner_value: next ? Number(initialSettings.waitlist_gift_value || 100) : null }).eq("id", entry.id).select().single();
+    setBusy(false);
+    if (error) { setMessage("Gabim: " + error.message); return; }
+    setEntries(current => current.map(item => item.id === data.id ? data : item));
+    setMessage(next ? entry.full_name + " u shënua si fitues." : "Statusi i fituesit u hoq.");
+  };
+  const copyEmails = async () => {
+    await navigator.clipboard.writeText(entries.filter(entry => entry.status === "active").map(entry => entry.email).join(", "));
+    setMessage("Email-et aktive u kopjuan.");
+  };
+  return <section className="waitlist-admin">
+    <div className={"waitlist-control " + (enabled ? "is-on" : "")}>
+      <div className="waitlist-control-icon"><Power/></div>
+      <div><span>STATUSI I LANSMIT</span><h2>Waitlist {enabled ? "aktive" : "joaktive"}</h2><p>{enabled ? "Vizitorët në homepage shohin waitlist-in dhe mund të rezervojnë vendin." : "Vizitorët shohin marketplace-in normal. Regjistrimet e reja janë të mbyllura."}</p></div>
+      <button onClick={() => void toggle()} disabled={busy} className="waitlist-toggle" role="switch" aria-checked={enabled}><i/><span>{enabled ? "ON" : "OFF"}</span></button>
+    </div>
+    {message && <div className="moderation-notice">{message}</div>}
+    <div className="waitlist-stats">
+      <article><Users/><span><small>REGJISTRIME</small><strong>{entries.length}</strong></span></article>
+      <article><Gift/><span><small>HYRJE NË SHORT</small><strong>{entries.length + entries.filter(entry => entry.referred_by).length}</strong></span></article>
+      <article><Share2/><span><small>REFERIME</small><strong>{entries.filter(entry => entry.referred_by).length}</strong></span></article>
+      <article><Trophy/><span><small>FITUES</small><strong>{entries.filter(entry => entry.is_winner).length} / {initialSettings.waitlist_gift_cards || 3}</strong></span></article>
+    </div>
+    <div className="panel waitlist-table-panel">
+      <div className="data-toolbar"><div><h2>{shown.length} persona</h2><p>Lista reale e qasjes së hershme dhe referimeve.</p></div><button onClick={() => void copyEmails()}><Copy size={15}/> Kopjo email-et</button></div>
+      <div className="table-wrap"><table><thead><tr><th>#</th><th>Personi</th><th>Interesi</th><th>Referime</th><th>Hyrje</th><th>Data</th><th>Shorti</th></tr></thead><tbody>{shown.map(entry => <tr key={entry.id} className={entry.is_winner ? "winner-row" : ""}><td><strong>#{entry.position}</strong></td><td><div className="waitlist-person"><b>{entry.full_name}</b><small>{entry.email}{entry.phone ? " · " + entry.phone : ""}</small></div></td><td><span className="status ok">{entry.interest === "buyer" ? "Blerës" : entry.interest === "seller" ? "Shitës" : "Të dyja"}</span></td><td>{referrals[entry.id] || 0}</td><td><strong>{1 + (referrals[entry.id] || 0)}</strong></td><td>{date(entry.created_at)}</td><td><button className={"winner " + (entry.is_winner ? "active" : "")} disabled={busy} onClick={() => void winner(entry)}><Trophy size={14}/>{entry.is_winner ? "Fitues" : "Shëno"}</button></td></tr>)}</tbody></table></div>
+      {!shown.length && <div className="empty compact"><Users/><h3>Lista është ende bosh</h3><p>Regjistrimet do të shfaqen këtu në kohë reale.</p></div>}
+    </div>
+  </section>;
+}
 function ActionPanel({row,type,onClose,onDone}:{row:Row;type:string;onClose:()=>void;onDone:(m:string)=>void}) { const [busy,setBusy]=useState(false); const run=async (task:PromiseLike<{error:any}>,message:string)=>{setBusy(true);const {error}=await task;if(error){alert(error.message);setBusy(false);return;}onDone(message)}; const client=createClient(); return <aside className="admin-drawer"><button aria-label="Mbyll" onClick={onClose}><X/></button><span>VEPRIME</span><h2>{row.full_name||row.title||row.name||row.id}</h2><p>{type === "users" ? row.email : "Zgjidh veprimin e duhur për këtë rekord."}</p>{type === "users" && <><button disabled={busy} className="primary" onClick={()=>void run(client.from("profiles").update({seller_verified:!row.seller_verified}).eq("id",row.id),row.seller_verified?"Statusi i shitësit u çaktivizua.":"Shitësi u verifikua.")}>{row.seller_verified?"Hiq verifikimin e shitësit":"Verifiko si shitës"}</button><button disabled={busy} onClick={()=>void run(client.from("profiles").update({identity_verified:!row.identity_verified}).eq("id",row.id),"Verifikimi i identitetit u përditësua.")}>Ndrysho verifikimin e identitetit</button></>}{type === "catalog" && <button disabled={busy} className="primary" onClick={()=>void run((row.kind === "Markë" ? client.from("brands") : client.from("categories")).update({is_active:!row.is_active}).eq("id",row.id),row.is_active?"Elementi u çaktivizua.":"Elementi u aktivizua.")}>{row.is_active?"Çaktivizo":"Aktivizo"}</button>}{type === "messages" && !row.read_at && <button disabled={busy} className="primary" onClick={()=>void run(client.from("messages").update({read_at:new Date().toISOString()}).eq("id",row.id),"Mesazhi u shënua si i lexuar.")}>Shëno të lexuar</button>}{type === "orders" && <button onClick={()=>navigator.clipboard.writeText(String(row.id)).then(()=>onDone("ID e porosisë u kopjua."))}>Kopjo ID e porosisë</button>}<button onClick={onClose}>Mbyll</button></aside>; }
 
 function renderCell(key:string, value:any, row:Row) {
