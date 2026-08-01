@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "../../../../../lib/admin-auth";
 import { createAdminSupabaseClient } from "../../../../../lib/supabase/admin";
-import { matterhornCategorySlug, MINIMUM_PROFIT, safeImageUrl, sellingPrice, slugifyBrand, type MatterhornProduct } from "../../../../../lib/matterhorn";
+import { matterhornCategorySlug, matterhornRequest, MINIMUM_PROFIT, safeImageUrl, sellingPrice, slugifyBrand, type MatterhornProduct } from "../../../../../lib/matterhorn";
+import { inferredSizes, localizeMatterhornProduct } from "../../../../../lib/ai/product-localization";
 
 export const maxDuration = 300;
 
@@ -56,8 +57,20 @@ export async function POST(request: NextRequest) {
 
     for (const id of ids) {
       try {
-        const product = suppliedProducts.get(id);
-        if (!product) throw new Error("Të dhënat e produktit mungojnë; rifresko katalogun dhe provo përsëri.");
+        const suppliedProduct = suppliedProducts.get(id);
+        if (!suppliedProduct) throw new Error("Të dhënat e produktit mungojnë; rifresko katalogun dhe provo përsëri.");
+        let detailedProduct: MatterhornProduct | null = null;
+        try {
+          detailedProduct = await matterhornRequest<MatterhornProduct>(`/ITEMS/${encodeURIComponent(id)}`);
+        } catch (error) {
+          console.warn("[matterhorn/import] detail fallback", { id, error: importErrorMessage(error) });
+        }
+        const product: MatterhornProduct = {
+          ...suppliedProduct,
+          ...(detailedProduct || {}),
+          images: [...new Set([...(detailedProduct?.images || []), ...(suppliedProduct.images || [])])],
+          variants: detailedProduct?.variants?.length ? detailedProduct.variants : suppliedProduct.variants,
+        };
         const cost = Number(product.prices?.EUR || 0);
         if (!(cost > 0)) throw new Error("Produkti nuk ka çmim EUR.");
         const categorySlug = matterhornCategorySlug(product);
@@ -66,13 +79,16 @@ export async function POST(request: NextRequest) {
           admin.from("brands").upsert({ slug: slugifyBrand(product.brand || "Matterhorn"), name: product.brand || "Matterhorn", is_active: true }, { onConflict: "name" }).select("id").single(),
         ]);
         if (brandResult.error) throw brandResult.error;
-        const sizes = (product.variants || []).filter(v => Number(v.stock) > 0).map(v => v.name);
-        const description = [product.description || "", product.size_table_txt ? `\n\nDetajet e madhësive dhe materialit:\n${product.size_table_txt.trim()}` : ""].join("").trim();
+        const [localized, sizes] = await Promise.all([
+          localizeMatterhornProduct(product),
+          Promise.resolve(inferredSizes(product)),
+        ]);
         const listingPayload = {
           seller_id: seller.id, category_id: category?.id || null, brand_id: brandResult.data.id,
-          title: (product.name_without_number || product.name).trim(), description,
+          title: localized.title, description: localized.description,
           price: sellingPrice(cost, shipping, profit), retail_price: null, currency: "EUR",
-          condition: "E re", size: sizes.join(", ") || "Një madhësi", color: product.color || null,
+          condition: "E re", size: sizes.join(", ") || "Një madhësi", color: localized.color || null,
+          material: localized.material || null,
           gender: "Femra", city: "Pejë", country_code: "XK", negotiable: false,
           shipping_available: true, status: "active", published_at: new Date().toISOString(),
           supplier: "matterhorn", supplier_product_id: String(product.id), supplier_cost: cost,
@@ -86,10 +102,15 @@ export async function POST(request: NextRequest) {
         const { data: listing, error: listingError } = await listingRequest;
         if (listingError) throw listingError;
         await admin.from("listing_variants").delete().eq("listing_id", listing.id);
-        const variants = (product.variants || []).map(variant => ({
-          listing_id: listing.id, supplier_variant_uid: String(variant.variant_uid), name: variant.name,
-          stock: Number(variant.stock) || 0, max_processing_time: Number(variant.max_processing_time) || null, ean: variant.ean || null,
-        }));
+        const variants = product.variants?.length
+          ? product.variants.map(variant => ({
+              listing_id: listing.id, supplier_variant_uid: String(variant.variant_uid), name: variant.name,
+              stock: Number(variant.stock) || 0, max_processing_time: Number(variant.max_processing_time) || null, ean: variant.ean || null,
+            }))
+          : sizes.map((size, index) => ({
+              listing_id: listing.id, supplier_variant_uid: `${product.id}-size-${index + 1}`, name: size,
+              stock: 1, max_processing_time: null, ean: null,
+            }));
         if (variants.length) { const { error } = await admin.from("listing_variants").insert(variants); if (error) throw error; }
         await uploadProductImages(product, seller.id, listing.id);
         results.push({ id, listing_id: listing.id, status: existing ? "updated" : "imported" });
