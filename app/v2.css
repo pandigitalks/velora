@@ -1263,7 +1263,9 @@
 }
 .v2-edit-listing {
   position: relative;
-  width: min(100%, 650px);
+  width: min(100%, 860px);
+  max-height: calc(100dvh - 36px);
+  overflow: auto;
   background: #fff;
   border-radius: 18px;
   padding: 30px;
@@ -1284,7 +1286,7 @@
   grid-template-columns: 180px 1fr;
   gap: 20px;
 }
-.v2-edit-listing-grid > img {
+.v2-edit-listing-photo > img {
   width: 180px;
   height: 220px;
   object-fit: cover;
@@ -1302,7 +1304,8 @@
   font-weight: 800;
 }
 .v2-edit-listing input,
-.v2-edit-listing select {
+.v2-edit-listing select,
+.v2-edit-listing textarea {
   height: 42px;
   border: 1px solid var(--v2-line);
   border-radius: 8px;
@@ -1310,6 +1313,17 @@
   font-size: 10px;
   background: #fff;
 }
+.v2-edit-listing textarea { min-height: 96px; resize: vertical; padding: 10px; }
+.v2-edit-listing-photo { display:flex; flex-direction:column; gap:9px; }
+.v2-photo-replace { border:1px dashed #bbb6aa; border-radius:9px; padding:10px; cursor:pointer; color:#4f4c45; }
+.v2-photo-replace input { height:auto; border:0; padding:6px 0 0; width:100%; }
+.v2-edit-listing-photo small { color:#777; font-size:8px; line-height:1.45; }
+.v2-edit-description { margin-top:15px; }
+.v2-edit-options,.v2-listing-options { display:flex; flex-wrap:wrap; gap:12px 20px; margin-top:3px; }
+.v2-edit-options label,.v2-listing-options label { display:flex; flex-direction:row; align-items:center; gap:8px; margin:0; font-size:9px; }
+.v2-edit-options input,.v2-listing-options input { width:15px; height:15px; accent-color:#171714; }
+.v2-listing-options { margin-bottom:14px; }
+.v2-inventory-empty { padding:24px; margin:0; }
 .v2-edit-listing > div:last-child {
   display: flex;
   justify-content: flex-end;
@@ -1369,7 +1383,7 @@
   .v2-edit-listing-grid {
     grid-template-columns: 1fr;
   }
-  .v2-edit-listing-grid > img {
+  .v2-edit-listing-photo > img {
     width: 100%;
     height: 170px;
   }
