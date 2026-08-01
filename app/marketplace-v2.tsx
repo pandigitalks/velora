@@ -2133,12 +2133,14 @@ function Rail({
   saved,
   toggle,
   add,
+  href = "/explore",
 }: {
   title: string;
   items: Product[];
   saved: ProductId[];
   toggle: (id: ProductId) => void;
   add: (id: ProductId) => void;
+  href?: string;
 }) {
   return (
     <section className="v2-section">
@@ -2147,7 +2149,7 @@ function Rail({
           <span>CURATED MARKETPLACE</span>
           <h2>{title}</h2>
         </div>
-        <Link href="/explore">
+        <Link href={href}>
           View all
           <ArrowRight />
         </Link>
@@ -2288,13 +2290,13 @@ function HomePage({
             <span>PËR TY</span>
             <h2>Përzgjedhur për ty</h2>
           </div>
-          <Link href="/explore">
+          <Link href="/explore?department=women">
             Shiko të gjitha
             <ArrowRight />
           </Link>
         </div>
         <div>
-          {[products[0], products[11], products[12], products[15]].map((p) => (
+          {[products[1], products[10], products[18], products[20]].map((p) => (
             <ProductCard
               key={p.id}
               p={p}
@@ -2328,62 +2330,39 @@ function HomePage({
           </Link>
         </div>
       </section>
-      <Rail
-        title="Të reja sot"
-        items={[products[9], products[13], products[18], products[23]]}
-        saved={saved}
-        toggle={toggle}
-        add={add}
-      />
-      <section className="v2-home-edits v2-section">
-        <div className="v2-section-head">
-          <div>
-            <span>TOP EDITS</span>
-            <h2>Përzgjedhje që ndryshojnë çdo javë</h2>
-          </div>
-          <Link href="/explore">
-            Shiko të gjitha
+      <section className="v2-home-poster v2-section">
+        <img
+          src="/assets/hero-editorial.webp"
+          alt="CLOZER editorial"
+          loading="lazy"
+          decoding="async"
+        />
+        <div>
+          <span>CLOZER · SECOND LIVES</span>
+          <h2>Stili nuk mbaron.<br />Ai vazhdon.</h2>
+          <p>Pjesë të zgjedhura, histori të reja dhe modë që meriton të vishet përsëri.</p>
+          <Link href="/explore" className="v2-pill light">
+            Zbulo koleksionin
             <ArrowRight />
           </Link>
         </div>
-        <div>
-          {[
-            [
-              "Uljet e reja",
-              "Deri në 35% më pak",
-              "/assets/bag-two.webp",
-              "/explore?sort=drop",
-            ],
-            [
-              "Vintage icons",
-              "Pjesë me histori",
-              "/assets/watch-one.webp",
-              "/explore?q=vintage",
-            ],
-            [
-              "Si e re",
-              "Gjendje e jashtëzakonshme",
-              "/assets/sneaker-one.webp",
-              "/explore?condition=New",
-            ],
-            [
-              "Nën 500€",
-              "Brende të mëdha, çmime të mençura",
-              "/assets/sunglasses-one.webp",
-              "/explore?max=500",
-            ],
-          ].map((x) => (
-            <Link href={x[3]} key={x[0]}>
-              <img src={x[2]} alt="" />
-              <span>
-                <b>{x[0]}</b>
-                <small>{x[1]}</small>
-                <ArrowRight />
-              </span>
-            </Link>
-          ))}
-        </div>
       </section>
+      <Rail
+        title="Tregu i përzgjedhur · Meshkuj"
+        items={[products[2], products[3], products[11], products[21]]}
+        saved={saved}
+        toggle={toggle}
+        add={add}
+        href="/explore?department=men"
+      />
+      <Rail
+        title="Produktet në zbritje"
+        items={[products[0], products[2], products[9], products[17]]}
+        saved={saved}
+        toggle={toggle}
+        add={add}
+        href="/explore?sort=drop"
+      />
       <section className="v2-sell-banner v2-section">
         <div>
           <span>GARDEROBA JOTE, ME VLERË TË RE</span>
