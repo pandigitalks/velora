@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "../../../../../lib/admin-auth";
 import { createAdminSupabaseClient } from "../../../../../lib/supabase/admin";
-import { isExcludedLingerie, matterhornCategorySlug, matterhornRequest, MINIMUM_PROFIT, safeImageUrl, sellingPrice, slugifyBrand, type MatterhornProduct } from "../../../../../lib/matterhorn";
+import { matterhornCategorySlug, MINIMUM_PROFIT, safeImageUrl, sellingPrice, slugifyBrand, type MatterhornProduct } from "../../../../../lib/matterhorn";
 
 export const maxDuration = 300;
 
@@ -27,8 +27,13 @@ async function uploadProductImages(product: MatterhornProduct, sellerId: string,
 export async function POST(request: NextRequest) {
   try {
     if (!(await requireAdmin())) return NextResponse.json({ error: "Nuk ke qasje." }, { status: 403 });
-    const body = await request.json() as { ids?: string[]; shipping?: number; profit?: number };
+    const body = await request.json() as { ids?: string[]; products?: MatterhornProduct[]; shipping?: number; profit?: number };
     const ids = [...new Set((body.ids || []).map(String))].slice(0, 20);
+    const suppliedProducts = new Map(
+      (body.products || [])
+        .filter(product => product && product.id != null)
+        .map(product => [String(product.id), product] as const),
+    );
     const shipping = Math.max(0, Number(body.shipping ?? 24));
     const profit = Math.max(MINIMUM_PROFIT, Number(body.profit ?? MINIMUM_PROFIT));
     if (!ids.length) return NextResponse.json({ error: "Zgjidh të paktën një produkt." }, { status: 400 });
@@ -39,8 +44,8 @@ export async function POST(request: NextRequest) {
 
     for (const id of ids) {
       try {
-        const product = await matterhornRequest<MatterhornProduct>(`/ITEMS/${encodeURIComponent(id)}`);
-        if (isExcludedLingerie(product)) throw new Error("Produktet lingerie janë të përjashtuara nga CLOZER.");
+        const product = suppliedProducts.get(id);
+        if (!product) throw new Error("Të dhënat e produktit mungojnë; rifresko katalogun dhe provo përsëri.");
         const cost = Number(product.prices?.EUR || 0);
         if (!(cost > 0)) throw new Error("Produkti nuk ka çmim EUR.");
         const categorySlug = matterhornCategorySlug(product);
@@ -77,7 +82,9 @@ export async function POST(request: NextRequest) {
         await uploadProductImages(product, seller.id, listing.id);
         results.push({ id, listing_id: listing.id, status: existing ? "updated" : "imported" });
       } catch (error) {
-        results.push({ id, status: "failed", error: error instanceof Error ? error.message : "Gabim gjatë importit." });
+        const message = error instanceof Error ? error.message : "Gabim gjatë importit.";
+        console.error("[matterhorn/import] product failed", { id, message });
+        results.push({ id, status: "failed", error: message });
       }
     }
     return NextResponse.json({ results, imported: results.filter(x => x.status !== "failed").length, failed: results.filter(x => x.status === "failed").length });
