@@ -38,16 +38,63 @@ export function sellingPrice(cost: number, shipping = DEFAULT_SHIPPING_COST, pro
   return Math.round((cost + shipping + Math.max(MINIMUM_PROFIT, profit)) * 100) / 100;
 }
 
+const MATTERHORN_RETRY_DELAYS_MS = [0, 700, 1800];
+
+function upstreamMessage(body: string, status: number) {
+  const compact = body.replace(/\\s+/g, " ").trim().slice(0, 240);
+  if (/service temporarily unavailable|service unavailable/i.test(compact)) {
+    return "Shërbimi Matterhorn është përkohësisht i zënë. Provo përsëri pas pak.";
+  }
+  if (status === 401 || status === 403) {
+    return "Çelësi i Matterhorn nuk është i vlefshëm ose nuk ka qasje në API.";
+  }
+  return compact || `Matterhorn API nuk u përgjigj si duhet (HTTP ${status}).`;
+}
+
 export async function matterhornRequest<T>(path: string): Promise<T> {
-  const apiKey = process.env.MATTERHORN_API_KEY;
+  const apiKey = process.env.MATTERHORN_API_KEY?.trim();
   if (!apiKey) throw new Error("MATTERHORN_API_KEY nuk është konfiguruar në server.");
-  const response = await fetch(`${MATTERHORN_BASE_URL}${path}`, {
-    headers: { accept: "application/json", Authorization: apiKey },
-    cache: "no-store",
-    signal: AbortSignal.timeout(30000),
-  });
-  if (!response.ok) throw new Error(`Matterhorn API ${response.status}: ${await response.text()}`);
-  return response.json() as Promise<T>;
+
+  let lastError: Error | null = null;
+  for (const [attempt, delay] of MATTERHORN_RETRY_DELAYS_MS.entries()) {
+    if (delay) await new Promise(resolve => setTimeout(resolve, delay));
+
+    try {
+      const response = await fetch(`${MATTERHORN_BASE_URL}${path}`, {
+        headers: {
+          accept: "application/json",
+          Authorization: apiKey,
+          "user-agent": "Velora-Matterhorn-Importer/1.0",
+        },
+        cache: "no-store",
+        signal: AbortSignal.timeout(30000),
+      });
+      const body = await response.text();
+      const contentType = response.headers.get("content-type") || "";
+      const looksLikeJson = contentType.includes("json") || /^[\\s]*[\\[{]/.test(body);
+
+      if (!response.ok || !looksLikeJson) {
+        const message = upstreamMessage(body, response.status);
+        const retryable = response.status >= 500 || /temporarily|unavailable|try again|service/i.test(body);
+        lastError = new Error(message);
+        if (retryable && attempt < MATTERHORN_RETRY_DELAYS_MS.length - 1) continue;
+        throw lastError;
+      }
+
+      try {
+        return JSON.parse(body) as T;
+      } catch {
+        lastError = new Error("Matterhorn ktheu të dhëna të dëmtuara. Provo përsëri.");
+        if (attempt < MATTERHORN_RETRY_DELAYS_MS.length - 1) continue;
+        throw lastError;
+      }
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Lidhja me Matterhorn dështoi.");
+      if (attempt < MATTERHORN_RETRY_DELAYS_MS.length - 1) continue;
+    }
+  }
+
+  throw lastError || new Error("Lidhja me Matterhorn dështoi.");
 }
 
 export function matterhornCategorySlug(product: MatterhornProduct) {
