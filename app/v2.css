@@ -268,7 +268,6 @@
 .v2-mega-groups section > a:not(:first-child):hover { color:#171714; text-decoration:none; transform:translateX(2px); }
 .v2-mega-groups section > a:not(:first-child)::before { content:""; display:inline-block; width:4px; height:4px; margin:0 8px 2px 0; border-radius:50%; background:#c5c1b6; }
 .v2-mega-groups section > a:first-child:hover { text-decoration:none; }
-.v2-mega-groups section > a:first-child::after { content:""; display:block; width:23px; height:2px; margin-top:8px; background:#1b1a17; }
 .v2-megamenu section {
   display: flex;
   flex-direction: column;
