@@ -6,11 +6,21 @@ type MatterhornCategory = Record<string, unknown> & { id?: string | number; cate
 
 export const dynamic = "force-dynamic";
 
+function categoryList(payload: unknown): MatterhornCategory[] {
+  if (Array.isArray(payload)) return payload as MatterhornCategory[];
+  if (!payload || typeof payload !== "object") return [];
+  const record = payload as Record<string, unknown>;
+  for (const key of ["categories", "items", "data", "results", "CATEGORIES"]) {
+    if (Array.isArray(record[key])) return record[key] as MatterhornCategory[];
+  }
+  return [];
+}
+
 export async function GET() {
   try {
     if (!(await requireAdmin())) return NextResponse.json({ error: "Nuk ke qasje." }, { status: 403 });
-    const payload = await matterhornRequest<MatterhornCategory[] | { categories?: MatterhornCategory[] }>("/DICTIONARIES/CATEGORIES");
-    const source = Array.isArray(payload) ? payload : payload.categories || [];
+    const payload = await matterhornRequest<unknown>("/DICTIONARIES/CATEGORIES");
+    const source = categoryList(payload);
     const categories = source
       .filter(category => !isExcludedLingerie(category))
       .map(category => ({
