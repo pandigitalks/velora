@@ -110,7 +110,7 @@ export default function MatterhornImport() {
       <label className="matterhorn-category-filter">
         <span>Kategoria</span>
         <select value={categoryId} onChange={event => setCategoryId(event.target.value)}>
-          <option value="">Të gjitha pa lingerie</option>
+          <option value="">Të gjitha kategoritë</option>
           {categories.map(category => <option key={category.id} value={category.id}>{category.path ? `${category.path} / ` : ""}{category.name}</option>)}
         </select>
       </label>
