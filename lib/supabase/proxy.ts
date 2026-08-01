@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { albanianRoutes } from "../routes";
 
 const protectedRoutes = [
   "/messages",
@@ -13,7 +14,7 @@ const protectedRoutes = [
   "/settings",
   "/orders",
   "/admin",
-];
+].flatMap((route) => [route, albanianRoutes[route]]).filter(Boolean);
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
