@@ -371,7 +371,7 @@ const sqText: Record<string, string> = {
   Shipping: "Dërgesa",
   "Place protected order": "Konfirmo porosinë e mbrojtur",
   "This is a demo checkout. No real charge is made.":
-    "Kjo është pagesë demonstruese. Nuk bëhet pagesë reale.",
+    "Pagesa bëhet në dorëzim, te korrieri.",
   ACTIVITY: "AKTIVITETI",
   "Offers, orders and pieces you follow":
     "Ofertat, porositë dhe produktet që ndjek",
@@ -5294,13 +5294,14 @@ function CheckoutPage({
   catalog: Product[];
 }) {
   const [done, setDone] = useState(false);
+  const [demoOrder, setDemoOrder] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [address, setAddress] = useState("");
   const [shippingMethod, setShippingMethod] = useState("courier_standard");
   const shippingOptions = [
-    { id: "courier_standard", title: "Korrier standard", detail: "2–4 ditë pune · me tracking", price: 3.9 },
-    { id: "courier_express", title: "Korrier express", detail: "Brenda 24 orëve · me tracking", price: 5.9 },
+    { id: "courier_standard", title: "Korrier standard", detail: "2–3 ditë pune · me tracking", price: 3.9 },
+    { id: "courier_express", title: "Korrier express", detail: "24 orë · me tracking", price: 5.9 },
     { id: "personal_pickup", title: "Marrje personale", detail: "Dakordohu në chat · pa transport", price: 0 },
   ];
   const shippingCost = shippingOptions.find((option) => option.id === shippingMethod)?.price || 0;
@@ -5332,7 +5333,9 @@ function CheckoutPage({
           <span>POROSIA U KONFIRMUA</span>
           <h1>Faleminderit!</h1>
           <p>
-            Porosia jote me pagesë në dorëzim u konfirmua. Do të të njoftojmë për çdo hap.
+            {demoOrder
+              ? "Porosia testuese u konfirmua. Nuk krijohet pagesë reale për produktet demo."
+              : "Porosia jote me pagesë në dorëzim u konfirmua. Do të të njoftojmë për çdo hap."}
           </p>
           <Link className="v2-pill dark" href="/orders">
             Gjurmo porosinë
@@ -5430,7 +5433,7 @@ function CheckoutPage({
                 .finally(() => setSubmitting(false));
             }}
           >
-            {submitting ? "Duke konfirmuar…" : "Konfirmo porosinë me pagesë në dorëzim"}
+            {submitting ? "Duke konfirmuar…" : "Përfundo blerjen"}
             <LockKeyhole />
           </button>
           {error && <small className="v2-form-error">{error}</small>}
@@ -7181,11 +7184,11 @@ function AuthenticationPage({ lang }: { lang: Lang }) {
         "Produkti dërgohet te blerësi",
       ]
     : [
-        "Payment is held in escrow",
+        "Order is confirmed with cash on delivery",
         "Item ships to a CLOZER center",
         "Expert checks identity and condition",
         "Security tag is attached",
-        "Item ships; payment is released",
+        "Item ships to the buyer",
       ];
   return (
     <main className="v2-page v2-auth-page">
@@ -7983,31 +7986,34 @@ export default function Marketplace() {
     const line = cart[0];
     const product = listingCatalog.find((item) => String(item.id) === String(line.id));
     const listingId = String(line.id);
-    if (!product || !/^[0-9a-f-]{36}$/i.test(listingId))
-      throw new Error("Ky është produkt demonstrues për waitlist. Porositë reale hapen vetëm për shpalljet e shitësve realë.");
-
-    const { data, error } = await createClient().rpc("create_cash_on_delivery_order", {
-      p_listing_id: listingId,
-      p_shipping_address: {
-        full_name: account.fullName,
-        phone: account.billingAddress.telefoni || null,
-        address,
-        city: account.billingAddress.qyteti || account.city || null,
-        postal_code: account.billingAddress.kodiPostal || null,
-        country: account.billingAddress.shteti || "Kosovë",
-      },
-      p_shipping_method: shippingMethod,
-      p_shipping_amount: shippingCost,
-    });
-    if (error) throw new Error(error.message);
+    if (!product) throw new Error("Produkti nuk u gjet.");
+    const isDemo = !/^[0-9a-f-]{36}$/i.test(listingId);
+    let orderId = `TEST-${Date.now().toString(36).toUpperCase()}`;
+    if (!isDemo) {
+      const { data, error } = await createClient().rpc("create_cash_on_delivery_order", {
+        p_listing_id: listingId,
+        p_shipping_address: {
+          full_name: account.fullName,
+          phone: account.billingAddress.telefoni || null,
+          address,
+          city: account.billingAddress.qyteti || account.city || null,
+          postal_code: account.billingAddress.kodiPostal || null,
+          country: account.billingAddress.shteti || "Kosovë",
+        },
+        p_shipping_method: shippingMethod,
+        p_shipping_amount: shippingCost,
+      });
+      if (error) throw new Error(error.message);
+      orderId = String(data).slice(0, 8).toUpperCase();
+    }
 
     setOrders([
       {
-        id: String(data).slice(0, 8).toUpperCase(),
+        id: orderId,
         total: product.price + shippingCost,
         items: [line.id],
         date: new Date().toLocaleDateString("sq-AL"),
-        status: "Në pritje të pagesës në dorëzim",
+        status: isDemo ? "Porosi testuese" : "Në pritje të pagesës në dorëzim",
         shippingMethod,
         trackingNumber: shippingMethod === "personal_pickup" ? "Takimi caktohet në chat" : undefined,
       },
@@ -8017,14 +8023,15 @@ export default function Marketplace() {
     setNotes([
       {
         id: Date.now(),
-        title: "Porosia u konfirmua",
-        text: "Paguaje korrierin kur ta pranosh porosinë.",
+        title: isDemo ? "Porosia testuese u konfirmua" : "Porosia u konfirmua",
+        text: isDemo ? "Ky është test me produkt demo; nuk krijohet pagesë reale." : "Paguaje korrierin kur ta pranosh porosinë.",
         type: "order",
         read: false,
         time: "Tani",
       },
       ...notes,
     ]);
+    setDemoOrder(isDemo);
   };
   const id = decodeURIComponent(path.split("/").pop() || "");
   const hideShell = path === "/sell" && Boolean(account?.sellerVerified);
