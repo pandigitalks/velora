@@ -129,6 +129,7 @@ type Order = {
 };
 type ChatMessage = { mine: boolean; text: string; time: string };
 type Lang = "sq" | "en";
+type BillingAddress = { emri?: string; telefoni?: string; adresa?: string; qyteti?: string; kodiPostal?: string; shteti?: string };
 type AccountProfile = {
   id: string;
   email: string;
@@ -140,6 +141,7 @@ type AccountProfile = {
   identityVerified: boolean;
   emailVerified: boolean;
   sellerApplicationStatus: "pending" | "approved" | "rejected" | null;
+  billingAddress: BillingAddress;
 };
 type ListingDraft = {
   id: ProductId;
@@ -5511,6 +5513,11 @@ function SettingsPage({ account }: { account: AccountProfile | null }) {
   const [section, setSection] = useState("Njoftimet");
   const [fullName, setFullName] = useState(account?.fullName || "");
   const [saveState, setSaveState] = useState("");
+  const [billing, setBilling] = useState<BillingAddress>(account?.billingAddress || {});
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordState, setPasswordState] = useState("");
   const toggle = (k: keyof typeof prefs) =>
     setPrefs({ ...prefs, [k]: !prefs[k] });
   const sections = [
@@ -5518,7 +5525,7 @@ function SettingsPage({ account }: { account: AccountProfile | null }) {
     "Njoftimet",
     "Privatësia dhe siguria",
     "Pagesat",
-    "Transporti",
+    "Adresa e faturimit",
   ];
   return (
     <main className="v2-page v2-settings">
@@ -7840,7 +7847,7 @@ export default function Marketplace() {
         supabase
           .from("profiles")
           .select(
-            "id,full_name,username,avatar_url,city,seller_verified,identity_verified",
+            "id,full_name,username,avatar_url,city,seller_verified,identity_verified,billing_address",
           )
           .eq("id", user.id)
           .maybeSingle(),
@@ -7869,6 +7876,7 @@ export default function Marketplace() {
         sellerApplicationStatus:
           (sellerApplication?.status as AccountProfile["sellerApplicationStatus"]) ||
           null,
+        billingAddress: (profile?.billing_address as BillingAddress | null) || {},
       });
     };
     void load();
