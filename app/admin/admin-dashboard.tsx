@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "../../lib/supabase/client";
 import {
@@ -61,7 +61,6 @@ export default function AdminDashboard({ initialData, initialModerationQueue, in
     return filtered.filter((row: Row) => JSON.stringify(row).toLowerCase().includes(q));
   }, [active, data, query, sellerApplications, statusFilter]);
   const refresh = () => { setRefreshing(true); window.setTimeout(() => window.location.reload(), 250); };
-  useEffect(() => { const timer = window.setInterval(refresh, 60000); return () => window.clearInterval(timer); }, []);
   const exportCsv = () => { const exportRows = rows as Row[]; const columns: string[] = Array.from(new Set(exportRows.flatMap((row: Row) => Object.keys(row)))); const csv = [columns.join(","), ...exportRows.map((row: Row) => columns.map((key: string) => JSON.stringify(row[key] ?? "")).join(","))].join("\n"); const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([csv], {type:"text/csv"})); link.download = `clozer-${active}.csv`; link.click(); URL.revokeObjectURL(link.href); };
 
   return <div className="admin-shell">
@@ -245,7 +244,7 @@ function MiniTable({ rows, type, onSelect }: { rows: Row[]; type: string; onSele
 }
 
 function ActivityPanel({data}:{data:Snapshot}) { return <section className="panel admin-detail"><PanelTitle icon={Activity} title="Aktiviteti i fundit" subtitle="Ngjarjet nga përdoruesit, listimet dhe porositë"/><ActivityFeed data={data}/></section>; }
-function SettingsPanel() { return <section className="panel admin-detail"><PanelTitle icon={Settings} title="Konfigurimi i panelit" subtitle="Kontrollet kryesore të administrimit"/><p>Moderimi i listimeve dhe aplikimeve të shitësve bëhet nga seksionet përkatëse. Të dhënat rifreskohen automatikisht çdo minutë.</p><p>Siguria e llogarive menaxhohet nga Supabase Auth; mbrojtja ndaj fjalëkalimeve të rrjedhura duhet aktivizuar në konfigurimin e Auth.</p></section>; }
+function SettingsPanel() { return <section className="panel admin-detail"><PanelTitle icon={Settings} title="Konfigurimi i panelit" subtitle="Kontrollet kryesore të administrimit"/><p>Moderimi i listimeve dhe aplikimeve të shitësve bëhet nga seksionet përkatëse. Të dhënat rifreskohen vetëm kur shtyp butonin Rifresko, pa të larguar nga seksioni aktual.</p><p>Siguria e llogarive menaxhohet nga Supabase Auth; mbrojtja ndaj fjalëkalimeve të rrjedhura duhet aktivizuar në konfigurimin e Auth.</p></section>; }
 
 function WaitlistManager({ initialEntries, initialSettings, query }: { initialEntries: Row[]; initialSettings: Row; query: string }) {
   const [entries, setEntries] = useState(initialEntries);
