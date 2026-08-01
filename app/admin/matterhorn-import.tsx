@@ -52,13 +52,22 @@ export default function MatterhornImport() {
     finally { setLoading(false); }
   };
   useEffect(() => {
-    void Promise.all([
-      load(1),
-      fetch("/api/admin/matterhorn/categories", { cache: "no-store" })
-        .then(readApiResponse)
-        .then(payload => setCategories(payload.categories || []))
-        .catch(() => setCategories([])),
-    ]);
+    let active = true;
+    const initialise = async () => {
+      // Prioritise the catalogue and avoid parallel supplier requests, because
+      // Matterhorn intermittently rejects concurrent calls with a text response.
+      await load(1);
+      if (!active) return;
+      try {
+        const response = await fetch("/api/admin/matterhorn/categories", { cache: "no-store" });
+        const payload = await readApiResponse(response);
+        if (active) setCategories(payload.categories || []);
+      } catch {
+        if (active) setCategories([]);
+      }
+    };
+    void initialise();
+    return () => { active = false; };
   }, []);
   useEffect(() => { if (categories.length) void load(1); }, [categoryId]);
 
