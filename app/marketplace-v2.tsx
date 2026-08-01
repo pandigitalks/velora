@@ -3838,7 +3838,8 @@ function SellPage({
   signedIn: boolean;
 }) {
   const router = useRouter();
-  const input = useRef<HTMLInputElement>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
+  const galleryInput = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState(1);
   const [preview, setPreview] = useState("");
   const [cover, setCover] = useState("");
@@ -3862,7 +3863,7 @@ function SellPage({
   const [analysis, setAnalysis] = useState<AuthenticityResult | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState("");
-  const shots = ["Përpara", "Prapa", "Brendësia", "Logoja", "Etiketa"];
+  const shots = ["Përpara", "Prapa", "Logoja", "Etiketa"];
   const ratios: Record<string, [number, number]> = {
     "Si i ri": [0.75, 0.8],
     "Shumë mirë": [0.65, 0.7],
@@ -4042,11 +4043,21 @@ function SellPage({
               analizohen së bashku si i njëjti produkt.
             </p>
             <input
-              ref={input}
+              ref={cameraInput}
               hidden
               type="file"
               accept="image/jpeg,image/png,image/webp"
               capture="environment"
+              onChange={(e) => {
+                file(e.target.files?.[0]);
+                e.currentTarget.value = "";
+              }}
+            />
+            <input
+              ref={galleryInput}
+              hidden
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
               onChange={(e) => {
                 file(e.target.files?.[0]);
                 e.currentTarget.value = "";
@@ -4072,11 +4083,17 @@ function SellPage({
                     </b>
                   </>
                 ) : (
-                  <button onClick={() => input.current?.click()}>
-                    <Camera />
-                    <b>Hap kamerën</b>
+                  <div className="v2-photo-source-picker">
+                    <button type="button" onClick={() => cameraInput.current?.click()}>
+                      <Camera />
+                      <b>Hap kamerën</b>
+                    </button>
+                    <button type="button" onClick={() => galleryInput.current?.click()}>
+                      <ImagePlus />
+                      <b>Zgjidh nga galeria</b>
+                    </button>
                     <small>{activeShot} · dritë natyrale · pa filtra</small>
-                  </button>
+                  </div>
                 )}
               </div>
               <aside>
@@ -4102,15 +4119,16 @@ function SellPage({
                     <ChevronRight />
                   </button>
                 ))}
-                <button
-                  className="v2-capture-action"
-                  onClick={() => input.current?.click()}
-                >
-                  <UploadCloud />
-                  {captured.includes(activeShot)
-                    ? "Ribëje fotografinë"
-                    : "Bëje këtë fotografi"}
-                </button>
+                <div className="v2-photo-source-actions">
+                  <button type="button" className="v2-capture-action" onClick={() => cameraInput.current?.click()}>
+                    <Camera />
+                    {captured.includes(activeShot) ? "Ribëje" : "Kamera"}
+                  </button>
+                  <button type="button" className="v2-gallery-action" onClick={() => galleryInput.current?.click()}>
+                    <ImagePlus />
+                    Galeria
+                  </button>
+                </div>
               </aside>
             </div>
             <div className="v2-photo-safety">
