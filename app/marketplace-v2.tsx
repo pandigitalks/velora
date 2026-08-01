@@ -5617,6 +5617,24 @@ function SettingsPage({ account }: { account: AccountProfile | null }) {
                 </span>
                 <input type="checkbox" disabled />
               </label>
+              <div className="v2-setting-card">
+                <h3>Ndrysho fjalëkalimin</h3>
+                <label>Fjalëkalimi aktual<input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} /></label>
+                <label>Fjalëkalimi i ri<input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} /></label>
+                <label>Konfirmo fjalëkalimin e ri<input type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} /></label>
+                <button className="v2-pill dark" onClick={async () => {
+                  if (!account || !currentPassword || newPassword.length < 8) { setPasswordState("Fjalëkalimi i ri duhet të ketë së paku 8 karaktere."); return; }
+                  if (newPassword !== confirmPassword) { setPasswordState("Fjalëkalimet e reja nuk përputhen."); return; }
+                  setPasswordState("Duke ndryshuar fjalëkalimin…");
+                  const supabase = createClient();
+                  const { error: signInError } = await supabase.auth.signInWithPassword({ email: account.email, password: currentPassword });
+                  if (signInError) { setPasswordState("Fjalëkalimi aktual nuk është i saktë."); return; }
+                  const { error } = await supabase.auth.updateUser({ password: newPassword });
+                  if (error) { setPasswordState("Fjalëkalimi nuk u ndryshua. Provo përsëri."); return; }
+                  setCurrentPassword(""); setNewPassword(""); setConfirmPassword(""); setPasswordState("Fjalëkalimi u ndryshua me sukses.");
+                }}>Ruaj fjalëkalimin</button>
+                {passwordState && <small>{passwordState}</small>}
+              </div>
             </>
           ) : section === "Pagesat" ? (
             <>
@@ -5625,8 +5643,23 @@ function SettingsPage({ account }: { account: AccountProfile | null }) {
             </>
           ) : (
             <>
-              <h2>Transporti</h2>
-              <p>Nuk ke ende adresë të ruajtur.</p>
+              <h2>Adresa e faturimit</h2>
+              <p>Kjo adresë përdoret për faturim dhe përgatitet automatikisht te pagesa.</p>
+              <div className="v2-setting-card">
+                <label>Emri i plotë<input value={billing.emri || ""} onChange={(event) => setBilling({ ...billing, emri: event.target.value })} /></label>
+                <label>Telefoni<input inputMode="tel" value={billing.telefoni || ""} onChange={(event) => setBilling({ ...billing, telefoni: event.target.value })} /></label>
+                <label>Adresa<input value={billing.adresa || ""} onChange={(event) => setBilling({ ...billing, adresa: event.target.value })} /></label>
+                <label>Qyteti<input value={billing.qyteti || ""} onChange={(event) => setBilling({ ...billing, qyteti: event.target.value })} /></label>
+                <label>Kodi postar<input inputMode="numeric" value={billing.kodiPostal || ""} onChange={(event) => setBilling({ ...billing, kodiPostal: event.target.value })} /></label>
+                <label>Shteti<input value={billing.shteti || "Kosovë"} onChange={(event) => setBilling({ ...billing, shteti: event.target.value })} /></label>
+                <button className="v2-pill dark" onClick={async () => {
+                  if (!account) return;
+                  setSaveState("Duke ruajtur adresën…");
+                  const { error } = await createClient().from("profiles").update({ billing_address: billing }).eq("id", account.id);
+                  setSaveState(error ? "Adresa nuk u ruajt." : "Adresa e faturimit u ruajt.");
+                }}>Ruaj adresën</button>
+                {saveState && <small>{saveState}</small>}
+              </div>
             </>
           )}
           <div className="v2-security-card">
