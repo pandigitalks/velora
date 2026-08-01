@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "../../../../../lib/admin-auth";
 import { createAdminSupabaseClient } from "../../../../../lib/supabase/admin";
-import { isExcludedLingerie, matterhornRequest, sellingPrice, type MatterhornProduct } from "../../../../../lib/matterhorn";
+import { matterhornRequest, sellingPrice, type MatterhornProduct } from "../../../../../lib/matterhorn";
 
 export const dynamic = "force-dynamic";
 
@@ -25,13 +25,13 @@ export async function GET(request: NextRequest) {
     for (const key of ["brand_id", "category_id", "new_collection"] as const) {
       const value = query.get(key); if (value) filters.set(key, value);
     }
-    // One supplier request keeps the admin page fast. We fetch a wider batch,
-    // remove lingerie, then show at most 30 products from that batch.
+    // Fetch only the requested page size. Every supplier category is available;
+    // the administrator decides what to view and import from the category filter.
     const params = new URLSearchParams(filters);
     params.set("page", String(page));
-    params.set("limit", "120");
+    params.set("limit", String(limit));
     const payload = await matterhornRequest<unknown>(`/ITEMS/?${params}`);
-    const items = productList(payload).filter(item => !isExcludedLingerie(item)).slice(0, limit);
+    const items = productList(payload).slice(0, limit);
     const ids = items.map(item => String(item.id));
     const admin = createAdminSupabaseClient();
     const { data: existing } = ids.length
