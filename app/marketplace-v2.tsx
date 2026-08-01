@@ -1849,12 +1849,13 @@ function AppHeader({
               </div>
             ) : (
               <button className="v2-signin" onClick={() => setAuth(true)}>
-                {lang === "sq" ? "Kyçu" : "Sign in"}
+                <User />
+                <span>{lang === "sq" ? "Kyçu" : "Sign in"}</span>
               </button>
             )}
-            <button className="v2-pill dark" onClick={requestSell}>
-              <Plus />
-              Sell
+            <button className="v2-pill v2-header-sell" onClick={requestSell}>
+              <span><Plus /></span>
+              <b>{lang === "sq" ? "Shit" : "Sell"}</b>
             </button>
           </div>
         </div>
@@ -2227,6 +2228,7 @@ function HomePage({
   boosted: Product[];
 }) {
   const heroVideo = useRef<HTMLVideoElement>(null);
+  const [heroReady, setHeroReady] = useState(false);
   const [homeStories, setHomeStories] = useState(storyData.slice(0, 3));
   useEffect(() => {
     const resumeHeroVideo = () => {
@@ -2254,17 +2256,18 @@ function HomePage({
       <section className="v2-hero">
         <video
           ref={heroVideo}
-          className="v2-hero-video"
+          className={`v2-hero-video ${heroReady ? "ready" : ""}`}
           autoPlay
           muted
           loop
           playsInline
           preload="auto"
-          poster="/assets/velora-hero-poster.jpg"
           aria-label="CLOZER fashion editorial"
-          onCanPlay={(event) =>
-            event.currentTarget.play().catch(() => undefined)
-          }
+          onLoadedData={() => setHeroReady(true)}
+          onCanPlay={(event) => {
+            setHeroReady(true);
+            event.currentTarget.play().catch(() => undefined);
+          }}
         >
           <source src="/assets/velora-hero.mp4" type="video/mp4" />
         </video>
