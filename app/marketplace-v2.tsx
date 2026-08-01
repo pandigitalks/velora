@@ -130,6 +130,7 @@ type AccountProfile = {
   city: string;
   sellerVerified: boolean;
   identityVerified: boolean;
+  emailVerified: boolean;
   sellerApplicationStatus: "pending" | "approved" | "rejected" | null;
 };
 type ListingDraft = {
@@ -1522,6 +1523,7 @@ function AppHeader({
   signedIn,
   onSignIn,
   onSignOut,
+  account,
 }: {
   cartCount: number;
   noteCount: number;
@@ -1532,6 +1534,7 @@ function AppHeader({
   signedIn: boolean;
   onSignIn: () => void;
   onSignOut: () => void;
+  account: AccountProfile | null;
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -1552,6 +1555,9 @@ function AppHeader({
   const [afterLogin, setAfterLogin] = useState<string | null>(
     safeNext || (wantsSellLogin ? "/sell" : null),
   );
+  const accountName = account?.fullName || account?.email.split("@")[0] || "Përdorues";
+  const accountInitials = accountName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+  const accountHandle = account?.username ? `@${account.username}` : account?.email || "";
   useEffect(() => {
     const close = (e: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(e.target as Node))
@@ -1570,6 +1576,12 @@ function AppHeader({
       document.removeEventListener("keydown", key);
     };
   }, []);
+  useEffect(() => {
+    if (!menu) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [menu]);
   useEffect(() => {
     const openAuth = (event: Event) => {
       const next = (event as CustomEvent<{ next?: string }>).detail?.next;
@@ -1604,7 +1616,8 @@ function AppHeader({
         <div className="v2-header-inner">
           <button
             className="v2-icon v2-menu-trigger"
-            aria-label="Open menu"
+            aria-label="Hap menynë"
+            aria-expanded={menu}
             onClick={() => setMenu(true)}
           >
             <Menu />
@@ -1740,7 +1753,7 @@ function AppHeader({
                   aria-expanded={profile}
                   onClick={() => setProfile((v) => !v)}
                 >
-                  AM
+                  {accountInitials}
                 </button>
                 <AnimatePresence>
                   {profile && (
@@ -1752,10 +1765,10 @@ function AppHeader({
                       exit={{ opacity: 0, y: -8, scale: 0.98 }}
                     >
                       <div>
-                        <span className="v2-avatar">AM</span>
+                        <span className="v2-avatar">{accountInitials}</span>
                         <p>
-                          <b>Arnis Mulliqi</b>
-                          <small>@arnis.archive</small>
+                          <b>{accountName}</b>
+                          <small>{accountHandle}</small>
                         </p>
                       </div>
                       <Link
@@ -1943,6 +1956,9 @@ function AppHeader({
           >
             <motion.aside
               className="v2-mobile-menu"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Menuja kryesore"
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
@@ -1958,20 +1974,20 @@ function AppHeader({
                   <X />
                 </button>
               </div>
+              <span className="v2-mobile-menu-heading">BLEJ SIPAS KATEGORISË</span>
+              <div className="v2-mobile-departments">
+                {categoryTree.map((department) => (
+                  <Link key={department.slug} href={`/explore?department=${department.slug}`} onClick={() => setMenu(false)}>
+                    {department.nameSq}
+                  </Link>
+                ))}
+              </div>
+              <span className="v2-mobile-menu-heading">ZBULO</span>
               {[
-                ["Eksploro", "/explore", false],
                 ["Brendet", "/brands", false],
-                ["Histori", "/stories", false],
+                ["Editoriale", "/stories", false],
                 ["Autentikimi", "/authentication", false],
                 ["Shitës profesionalë", "/professional-sellers", false],
-                ["Të ruajturat", "/saved", true],
-                ["Shporta", "/cart", true],
-                ["Mesazhet", "/messages", true],
-                ["Porositë", "/orders", true],
-                ["Profili", "/profile", true],
-                ["Cilësimet", "/settings", true],
-                ["FAQ", "/faq", false],
-                ["Kontakti", "/contact", false],
               ].map(([label, href, protectedItem]) =>
                 protectedItem && !signedIn ? (
                   <button
@@ -1993,6 +2009,17 @@ function AppHeader({
                   </Link>
                 ),
               )}
+              {signedIn && (
+                <>
+                  <span className="v2-mobile-menu-heading">LLOGARIA</span>
+                  <Link onClick={() => setMenu(false)} href="/orders">Porositë<ChevronRight /></Link>
+                  <Link onClick={() => setMenu(false)} href="/settings">Cilësimet<ChevronRight /></Link>
+                </>
+              )}
+              <span className="v2-mobile-menu-heading">NDIHMË</span>
+              {[["FAQ", "/faq"], ["Kontakti", "/contact"]].map(([label, href]) => (
+                <Link onClick={() => setMenu(false)} key={href} href={href}>{label}<ChevronRight /></Link>
+              ))}
               <div className="v2-mobile-language">
                 <span>{lang === "sq" ? "Gjuha" : "Language"}</span>
                 <div className="v2-lang-choice">
@@ -2429,21 +2456,21 @@ function ExplorePage({
   saved,
   toggle,
   add,
-  listings = [],
+  catalog,
   signedIn,
 }: {
   saved: ProductId[];
   toggle: (id: ProductId) => void;
   add: (id: ProductId) => void;
-  listings?: ListingDraft[];
+  catalog: Product[];
   signedIn: boolean;
 }) {
   const router = useRouter();
   const params = useSearchParams();
   const [filters, setFilters] = useState(false);
-  const [aiSearch, setAiSearch] = useState(false);
+  const [advancedSearch, setAdvancedSearch] = useState(false);
   const [categoryOpen, setCategoryOpen] = useState(false);
-  const [aiQuery, setAiQuery] = useState("");
+  const [advancedQuery, setAdvancedQuery] = useState("");
   const [savedSearches, setSavedSearches] = usePersistent<string[]>(
     "velora-saved-searches",
     [],
@@ -2467,31 +2494,15 @@ function ExplorePage({
     negotiable: params.get("negotiable") === "1",
   };
   const [draft, setDraft] = useState(active);
-  const userProducts = useMemo<Product[]>(
-    () =>
-      listings.map((l, i) => ({
-        id: l.id || 90000 + i,
-        name: l.title,
-        brand: (l.brand || "CLOZER USER").toUpperCase(),
-        price: l.price,
-        image: l.image || "/assets/bag-one.webp",
-        position: "center",
-        seller: "Arnis Archive",
-        size: l.size || "Një madhësi",
-        city: "Pejë",
-        verified: false,
-        label: "E re",
-        category: l.category || "Bags",
-        color: "—",
-        condition: l.condition || "Mirë",
-        authLevel: "none",
-        gender: l.gender,
-        shipping: true,
-        negotiable: true,
-      })),
-    [listings],
-  );
-  const catalog = useMemo(() => [...userProducts, ...products], [userProducts]);
+  const normalizedValue = (raw: string) => {
+    const aliases: Record<string, string> = {
+      Pristina: "Prishtinë", Copenhagen: "Kopenhagë", Geneva: "Gjenevë",
+      London: "Londër", Milan: "Milano", Vienna: "Vjenë",
+      "One size": "Një madhësi", New: "E re", Excellent: "Shkëlqyeshëm",
+      "Very good": "Shumë mirë", Black: "E zezë", Gold: "Ari", Cream: "Krem",
+    };
+    return aliases[raw] || raw;
+  };
   const value = (p: Product, key: "gender" | "material") =>
     p[key] ||
     (key === "gender"
@@ -2514,11 +2525,11 @@ function ExplorePage({
               p.category === category ||
               p.category === categoryLabel(category)) &&
             (active.brand === "All" || p.brand === active.brand) &&
-            (active.condition === "All" || p.condition === active.condition) &&
-            (active.city === "All" || p.city === active.city) &&
+            (active.condition === "All" || normalizedValue(p.condition) === active.condition) &&
+            (active.city === "All" || normalizedValue(p.city) === active.city) &&
             (active.gender === "All" || value(p, "gender") === active.gender) &&
-            (active.size === "All" || p.size === active.size) &&
-            (active.color === "All" || p.color === active.color) &&
+            (active.size === "All" || normalizedValue(p.size) === active.size) &&
+            (active.color === "All" || normalizedValue(p.color) === active.color) &&
             (active.material === "All" ||
               value(p, "material") === active.material) &&
             (!q ||
@@ -2626,7 +2637,7 @@ function ExplorePage({
     field: keyof Product,
   ) =>
     [
-      ...new Set(catalog.map((p) => String(p[field] || "")).filter(Boolean)),
+      ...new Set(catalog.map((p) => normalizedValue(String(p[field] || ""))).filter(Boolean)),
     ].sort();
   const saveSearch = () => {
     if (!signedIn) {
@@ -2636,11 +2647,11 @@ function ExplorePage({
     const key = params.toString() || "Të gjitha produktet";
     if (!savedSearches.includes(key)) setSavedSearches([...savedSearches, key]);
   };
-  const runAiSearch = (e: FormEvent) => {
+  const runAdvancedSearch = (e: FormEvent) => {
     e.preventDefault();
-    if (!aiQuery.trim()) return;
-    router.push(`/explore?q=${encodeURIComponent(aiQuery.trim())}`);
-    setAiSearch(false);
+    if (!advancedQuery.trim()) return;
+    router.push(`/explore?q=${encodeURIComponent(advancedQuery.trim())}`);
+    setAdvancedSearch(false);
   };
   return (
     <main className="v2-page">
@@ -2659,11 +2670,11 @@ function ExplorePage({
           </p>
         </div>
         <div className="v2-explore-tools">
-          <button onClick={() => setAiSearch(true)}>
-            <Sparkles />
+          <button onClick={() => setAdvancedSearch(true)}>
+            <Search />
             <span>
-              <b>Kërko me CLOZER AI</b>
-              <small>Provo “çantë elegante nën 800€”</small>
+              <b>Kërkim i avancuar</b>
+              <small>Kërko me brend, stil, ngjyrë ose buxhet</small>
             </span>
             <ArrowRight />
           </button>
@@ -3022,17 +3033,17 @@ function ExplorePage({
         )}
       </AnimatePresence>
       <AnimatePresence>
-        {aiSearch && (
+        {advancedSearch && (
           <motion.div
             className="v2-modal-bg"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setAiSearch(false)}
+            onClick={() => setAdvancedSearch(false)}
           >
             <motion.form
               className="v2-ai-search-modal"
-              onSubmit={runAiSearch}
+              onSubmit={runAdvancedSearch}
               initial={{ opacity: 0, y: 20, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.98 }}
@@ -3041,21 +3052,21 @@ function ExplorePage({
               <button
                 type="button"
                 className="v2-icon close"
-                onClick={() => setAiSearch(false)}
+                onClick={() => setAdvancedSearch(false)}
                 aria-label="Mbyll"
               >
                 <X />
               </button>
-              <Sparkles />
-              <span>CLOZER AI SEARCH</span>
+              <Search />
+              <span>KËRKIM I AVANCUAR</span>
               <h2>Përshkruaje atë që kërkon.</h2>
               <p>Kërko me stil, buxhet, brend, ngjyrë ose rast përdorimi.</p>
               <div>
                 <Search />
                 <input
                   autoFocus
-                  value={aiQuery}
-                  onChange={(e) => setAiQuery(e.target.value)}
+                  value={advancedQuery}
+                  onChange={(e) => setAdvancedQuery(e.target.value)}
                   placeholder="p.sh. çantë e zezë elegante nën 800€"
                 />
               </div>
@@ -3065,7 +3076,7 @@ function ExplorePage({
                   "Orë luksoze nën 2,000€",
                   "Çantë vintage në Prishtinë",
                 ].map((x) => (
-                  <button type="button" key={x} onClick={() => setAiQuery(x)}>
+                  <button type="button" key={x} onClick={() => setAdvancedQuery(x)}>
                     {x}
                   </button>
                 ))}
@@ -5379,7 +5390,7 @@ function NotificationsPage({
   );
 }
 
-function SettingsPage() {
+function SettingsPage({ account }: { account: AccountProfile | null }) {
   const [prefs, setPrefs] = usePersistent("velora-settings", {
     messages: true,
     offers: true,
@@ -5387,22 +5398,24 @@ function SettingsPage() {
     shipping: true,
     dark: false,
   });
-  const [section, setSection] = useState("Notifications");
+  const [section, setSection] = useState("Njoftimet");
+  const [fullName, setFullName] = useState(account?.fullName || "");
+  const [saveState, setSaveState] = useState("");
   const toggle = (k: keyof typeof prefs) =>
     setPrefs({ ...prefs, [k]: !prefs[k] });
   const sections = [
-    "Account",
-    "Notifications",
-    "Privacy & safety",
-    "Payments",
-    "Shipping",
+    "Llogaria",
+    "Njoftimet",
+    "Privatësia dhe siguria",
+    "Pagesat",
+    "Transporti",
   ];
   return (
     <main className="v2-page v2-settings">
       <PageTitle
-        eyebrow="ACCOUNT"
-        title="Settings"
-        text="Control your privacy, security and notifications"
+        eyebrow="LLOGARIA"
+        title="Cilësimet"
+        text="Menaxho profilin, privatësinë dhe njoftimet"
       />
       <div className="v2-settings-layout">
         <nav>
@@ -5418,19 +5431,19 @@ function SettingsPage() {
           ))}
         </nav>
         <section key={section}>
-          {section === "Notifications" ? (
+          {section === "Njoftimet" ? (
             <>
-              <h2>Notification preferences</h2>
-              <p>Choose what deserves your attention.</p>
+              <h2>Preferencat e njoftimeve</h2>
+              <p>Zgjidh njoftimet që dëshiron të marrësh.</p>
               {(
                 [
-                  ["messages", "Messages", "New buyer and seller messages"],
-                  ["offers", "Offers", "New, accepted and counter offers"],
-                  ["drops", "Price drops", "Changes to your saved pieces"],
+                  ["messages", "Mesazhet", "Mesazhe të reja nga blerësit dhe shitësit"],
+                  ["offers", "Ofertat", "Oferta të reja, të pranuara dhe kundëroferta"],
+                  ["drops", "Uljet e çmimeve", "Ndryshime në produktet e ruajtura"],
                   [
                     "shipping",
-                    "Shipping updates",
-                    "Tracking and authentication milestones",
+                    "Përditësimet e transportit",
+                    "Gjurmimi dhe fazat e autentikimit",
                   ],
                 ] as const
               ).map(([k, t, d]) => (
@@ -5447,77 +5460,65 @@ function SettingsPage() {
                 </label>
               ))}
             </>
-          ) : section === "Account" ? (
+          ) : section === "Llogaria" ? (
             <>
-              <h2>Account</h2>
-              <p>Personal details connected to your CLOZER profile.</p>
+              <h2>Llogaria</h2>
+              <p>Të dhënat reale të lidhura me profilin tënd CLOZER.</p>
               <div className="v2-setting-card">
                 <label>
-                  Full name
-                  <input defaultValue="Arnis Mulliqi" />
+                  Emri i plotë
+                  <input value={fullName} onChange={(event) => setFullName(event.target.value)} />
                 </label>
                 <label>
-                  Email address
-                  <input defaultValue="partners@nautillus.co" />
+                  Email
+                  <input value={account?.email || ""} disabled />
                 </label>
-                <button className="v2-pill dark">Save changes</button>
+                <button className="v2-pill dark" onClick={async () => {
+                  if (!account || fullName.trim().length < 2) return;
+                  setSaveState("Duke ruajtur…");
+                  const { error } = await createClient().from("profiles").update({ full_name: fullName.trim() }).eq("id", account.id);
+                  setSaveState(error ? "Ndryshimet nuk u ruajtën." : "Ndryshimet u ruajtën.");
+                }}>Ruaj ndryshimet</button>
+                {saveState && <small>{saveState}</small>}
               </div>
             </>
-          ) : section === "Privacy & safety" ? (
+          ) : section === "Privatësia dhe siguria" ? (
             <>
-              <h2>Privacy & safety</h2>
-              <p>Control visibility and account protection.</p>
+              <h2>Privatësia dhe siguria</h2>
+              <p>Kontrollo dukshmërinë dhe mbrojtjen e llogarisë.</p>
               <label className="v2-setting-row">
                 <span>
-                  <b>Private activity</b>
-                  <small>Keep saved items and browsing history private</small>
+                  <b>Aktivitet privat</b>
+                  <small>Produktet e ruajtura mbeten private</small>
                 </span>
                 <input type="checkbox" defaultChecked />
               </label>
               <label className="v2-setting-row">
                 <span>
-                  <b>Two-factor authentication</b>
-                  <small>Required when signing in on a new device</small>
+                  <b>Autentikimi me dy faktorë</b>
+                  <small>Do të aktivizohet së shpejti</small>
                 </span>
-                <input type="checkbox" defaultChecked />
+                <input type="checkbox" disabled />
               </label>
             </>
-          ) : section === "Payments" ? (
+          ) : section === "Pagesat" ? (
             <>
-              <h2>Payments</h2>
-              <p>Cards and wallet used for protected checkout.</p>
-              <div className="v2-payment-method">
-                <CreditCard />
-                <span>
-                  <b>Visa ending in 2048</b>
-                  <small>Primary payment method</small>
-                </span>
-                <button>Remove</button>
-              </div>
-              <button className="v2-pill outline">Add payment method</button>
+              <h2>Pagesat</h2>
+              <p>Nuk ke ende mënyrë pagese të ruajtur.</p>
             </>
           ) : (
             <>
-              <h2>Shipping</h2>
-              <p>Saved delivery and return addresses.</p>
-              <div className="v2-payment-method">
-                <MapPin />
-                <span>
-                  <b>Pejë, Kosovo</b>
-                  <small>Primary delivery address</small>
-                </span>
-                <button>Edit</button>
-              </div>
-              <button className="v2-pill outline">Add new address</button>
+              <h2>Transporti</h2>
+              <p>Nuk ke ende adresë të ruajtur.</p>
             </>
           )}
           <div className="v2-security-card">
             <ShieldCheck />
             <span>
-              <b>Account protected</b>
-              <small>Email, phone and two-factor authentication verified</small>
+              <b>Llogaria e mbrojtur</b>
+              <small>{account?.emailVerified ? "Emaili është verifikuar" : "Verifiko emailin për siguri më të lartë"}</small>
             </span>
-            <button>Review security</button>
+            <button onClick={() => setSection("Privatësia dhe siguria")}>Shiko sigurinë</button>
           </div>
         </section>
       </div>
@@ -5527,16 +5528,26 @@ function SettingsPage() {
 
 function ProfilePage({
   listings,
+  dashboardListings,
   account,
 }: {
-  listings: ListingDraft[];
+  listings: Product[];
+  dashboardListings: ListingDraft[];
   account: AccountProfile | null;
 }) {
   const path = usePathname();
-  const [tab, setTab] = useState("Wardrobe");
+  const [tab, setTab] = useState("Garderoba");
+  const [stats, setStats] = useState({ active: listings.length, sold: 0 });
+  useEffect(() => {
+    if (!account) return;
+    void Promise.all([
+      createClient().from("listings").select("id", { count: "exact", head: true }).eq("seller_id", account.id).eq("status", "active"),
+      createClient().from("listings").select("id", { count: "exact", head: true }).eq("seller_id", account.id).eq("status", "sold"),
+    ]).then(([activeResult, soldResult]) => setStats({ active: activeResult.count || 0, sold: soldResult.count || 0 }));
+  }, [account, listings.length]);
   if (path === "/dashboard")
     return account?.sellerVerified ? (
-      <Dashboard listings={listings} />
+      <Dashboard listings={dashboardListings} />
     ) : (
       <main className="v2-page">
         <SellerApplicationCard account={account} />
@@ -5572,11 +5583,11 @@ function ProfilePage({
           </p>
           <div>
             <b>
-              {listings.length}
+              {stats.active}
               <small>Shpallje</small>
             </b>
             <b>
-              0<small>Shitur</small>
+              {stats.sold}<small>Shitur</small>
             </b>
             <b>
               0<small>Vlerësime</small>
@@ -5590,7 +5601,7 @@ function ProfilePage({
               Paneli i shitësit
             </Link>
           )}
-          <Link className="v2-pill outline" href="/settings">
+          <Link className="v2-pill outline" href="/settings" aria-label="Cilësimet">
             <Settings />
           </Link>
         </aside>
@@ -5600,7 +5611,7 @@ function ProfilePage({
           <ShieldCheck />
           {account?.identityVerified
             ? "Identitet i verifikuar"
-            : "Email i verifikuar"}
+            : account?.emailVerified ? "Email i verifikuar" : "Email i paverifikuar"}
         </span>
         {account?.sellerVerified && (
           <span>
@@ -5611,7 +5622,7 @@ function ProfilePage({
       </div>
       {!account?.sellerVerified && <SellerApplicationCard account={account} />}
       <div className="v2-tabs">
-        {["Wardrobe", "Reviews", "Sold", "Collections"].map((x) => (
+        {["Garderoba", "Vlerësimet", "Të shitura", "Koleksionet"].map((x) => (
           <button
             key={x}
             className={tab === x ? "active" : ""}
@@ -5621,18 +5632,14 @@ function ProfilePage({
           </button>
         ))}
       </div>
-      {tab === "Wardrobe" ? (
+      {tab === "Garderoba" ? (
         listings.length ? (
           <div className="v2-profile-listings">
-            {listings.map((l, i) => (
-              <article key={i}>
-                {l.image ? (
-                  <img src={l.image} alt={l.title} />
-                ) : (
-                  <ProductImage p={products[0]} />
-                )}
-                <b>{l.title}</b>
-                <span>€{l.price.toLocaleString()}</span>
+            {listings.map((listing) => (
+              <article key={listing.id}>
+                <img src={listing.image} alt={listing.name} />
+                <b>{listing.name}</b>
+                <span>€{listing.price.toLocaleString("sq-AL")}</span>
               </article>
             ))}
           </div>
@@ -5645,15 +5652,15 @@ function ProfilePage({
             action="Shto produkt"
           />
         )
-      ) : tab === "Reviews" ? (
-        <Reviews />
+      ) : tab === "Vlerësimet" ? (
+        <Empty icon={<Star />} title="Ende nuk ka vlerësime" text="Vlerësimet nga blerësit do të shfaqen këtu." href="/explore" action="Eksploro produktet" />
       ) : (
         <Empty
-          icon={tab === "Sold" ? <Package /> : <Heart />}
-          title={`${tab} will appear here`}
-          text={`Your ${tab.toLowerCase()} history is ready for live account data.`}
+          icon={tab === "Të shitura" ? <Package /> : <Heart />}
+          title={tab === "Të shitura" ? "Ende nuk ke produkte të shitura" : "Ende nuk ke koleksione"}
+          text={tab === "Të shitura" ? "Produktet e shitura do të shfaqen këtu." : "Koleksionet e tua do të shfaqen këtu."}
           href="/explore"
-          action="Explore pieces"
+          action="Eksploro produktet"
         />
       )}
     </main>
@@ -7535,7 +7542,7 @@ function Footer() {
         ))}
       </div>
       <div>
-        <span>© 2026 CLOZER Marketplace · Demo</span>
+        <span>© 2026 CLOZER Marketplace</span>
         <nav>
           <Link href="/privacy">Privatësia</Link>
           <Link href="/terms">Kushtet</Link>
@@ -7613,6 +7620,7 @@ export default function Marketplace() {
     const local = listings.map(
       (listing, index): Product => ({
         id: listing.id || `local-${90000 + index}`,
+        sellerId: account?.id,
         name: listing.title,
         brand: (listing.brand || "PA BREND").toUpperCase(),
         price: listing.price,
@@ -7646,6 +7654,17 @@ export default function Marketplace() {
       ...products,
     ];
   }, [listings, publicListings, account]);
+  const marketplaceCatalog = useMemo(() => {
+    const realListings = listingCatalog.filter((product) => {
+      const id = String(product.id);
+      return id.startsWith("local-") || /^[0-9a-f-]{36}$/i.test(id);
+    });
+    return realListings.length ? realListings : products;
+  }, [listingCatalog]);
+  const ownListings = useMemo(
+    () => account ? marketplaceCatalog.filter((product) => product.sellerId === account.id || String(product.id).startsWith("local-")) : [],
+    [account, marketplaceCatalog],
+  );
   const homepageBoosted = useMemo(() => {
     const priority: Record<string, number> = { homepage_7d: 0, urgent_3d: 1, top_24h: 2 };
     const active = listingCatalog
@@ -7725,6 +7744,7 @@ export default function Marketplace() {
         city: profile?.city || "",
         sellerVerified: Boolean(profile?.seller_verified),
         identityVerified: Boolean(profile?.identity_verified),
+        emailVerified: Boolean(user.email_confirmed_at),
         sellerApplicationStatus:
           (sellerApplication?.status as AccountProfile["sellerApplicationStatus"]) ||
           null,
@@ -7842,7 +7862,7 @@ export default function Marketplace() {
         saved={privateSaved}
         toggle={toggle}
         add={add}
-        listings={signedIn ? listings : []}
+        catalog={marketplaceCatalog}
         signedIn={signedIn}
       />
     );
@@ -7898,7 +7918,7 @@ export default function Marketplace() {
     );
   else if (path === "/notifications")
     content = <NotificationsPage notes={privateNotes} setNotes={setNotes} />;
-  else if (path === "/settings") content = <SettingsPage />;
+  else if (path === "/settings") content = <SettingsPage account={account} />;
   else if (path === "/orders") content = <OrdersPage orders={orders} />;
   else if (path === "/contact") content = <ContactPage />;
   else if (path === "/faq") content = <FaqPage />;
@@ -7927,7 +7947,7 @@ export default function Marketplace() {
     );
   else if (path === "/profile" || path === "/dashboard")
     content = (
-      <ProfilePage listings={signedIn ? listings : []} account={account} />
+      <ProfilePage listings={signedIn ? ownListings : []} dashboardListings={signedIn ? listings : []} account={account} />
     );
   else
     content = (
@@ -7960,6 +7980,7 @@ export default function Marketplace() {
             signedIn={signedIn}
             onSignIn={signIn}
             onSignOut={signOut}
+            account={account}
           />
         )}
         <AnimatePresence mode="wait">
