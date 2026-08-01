@@ -302,7 +302,10 @@
   object-fit: cover;
   object-position: center 47%;
   display: block;
+  opacity: 0;
+  transition: opacity .18s ease;
 }
+.v2-hero-video.ready { opacity: 1; }
 .v2-hero-overlay {
   position: absolute;
   inset: 0;
@@ -4572,17 +4575,50 @@
   width: 15px;
 }
 .v2-signin {
-  height: 40px;
-  padding: 0 18px;
-  border: 1px solid #c6c3bb;
+  height: 42px;
+  padding: 0 16px 0 12px;
+  border: 1px solid #dedbd3;
   border-radius: 999px;
-  background: linear-gradient(180deg, #fff, #f8f7f3);
+  background: #f7f6f2;
+  color: #171714;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 11px;
   font-weight: 800;
-  box-shadow: 0 3px 9px rgba(20,20,18,.05);
-  transition: .2s;
+  cursor: pointer;
+  transition: transform .2s ease, border-color .2s ease, background .2s ease, box-shadow .2s ease;
 }
-.v2-signin:hover { border-color:#171714; transform:translateY(-1px); box-shadow:0 7px 14px rgba(20,20,18,.1); }
+.v2-signin svg {
+  width: 27px;
+  height: 27px;
+  padding: 6px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 7px rgba(20,20,18,.08);
+}
+.v2-signin:hover { border-color:#bdb9af; background:#fff; transform:translateY(-1px); box-shadow:0 7px 16px rgba(20,20,18,.08); }
+.v2-header-sell {
+  height: 42px;
+  padding: 0 17px 0 7px;
+  border: 1px solid #171714;
+  background: #171714;
+  color: #fff;
+  gap: 9px;
+  box-shadow: 0 6px 16px rgba(20,20,18,.17);
+}
+.v2-header-sell > span {
+  width: 29px;
+  height: 29px;
+  border-radius: 50%;
+  background: #fff;
+  color: #171714;
+  display: grid;
+  place-items: center;
+}
+.v2-header-sell > span svg { width: 14px; }
+.v2-header-sell > b { font-size: 11px; letter-spacing: .01em; }
+.v2-header-sell:hover { background:#292925; box-shadow:0 10px 22px rgba(20,20,18,.23); }
 
 .v2-report-listing,.v2-boost-modal { position:relative; width:min(520px,calc(100% - 30px)); max-height:calc(100dvh - 40px); overflow:auto; margin:auto; padding:32px; border-radius:22px; background:#fff; box-shadow:0 30px 90px rgba(0,0,0,.23); }
 .v2-report-listing > span,.v2-boost-modal > span { font-size:9px; font-weight:850; letter-spacing:.15em; }
