@@ -12,6 +12,22 @@ type MatterhornCategory = { id: string; name: string; path: string };
 
 const money = (value: number) => new Intl.NumberFormat("sq-AL", { style: "currency", currency: "EUR" }).format(value || 0);
 
+async function readApiResponse(response: Response) {
+  const body = await response.text();
+  let payload: Record<string, any> = {};
+  if (body) {
+    try {
+      payload = JSON.parse(body) as Record<string, any>;
+    } catch {
+      throw new Error(response.ok
+        ? "Serveri ktheu një përgjigje të pavlefshme. Provo përsëri."
+        : `Shërbimi nuk është i disponueshëm për momentin (HTTP ${response.status}).`);
+    }
+  }
+  if (!response.ok) throw new Error(String(payload.error || `Kërkesa dështoi (HTTP ${response.status}).`));
+  return payload;
+}
+
 export default function MatterhornImport() {
   const [items, setItems] = useState<CatalogProduct[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
@@ -30,8 +46,7 @@ export default function MatterhornImport() {
     try {
       const categoryQuery = categoryId ? `&category_id=${encodeURIComponent(categoryId)}` : "";
       const response = await fetch(`/api/admin/matterhorn/catalog?page=${targetPage}&limit=30${categoryQuery}`, { cache: "no-store" });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "Katalogu nuk u ngarkua.");
+      const payload = await readApiResponse(response);
       setItems(payload.items || []); setPage(targetPage);
     } catch (error) { setMessage(error instanceof Error ? error.message : "Katalogu nuk u ngarkua."); }
     finally { setLoading(false); }
@@ -40,8 +55,9 @@ export default function MatterhornImport() {
     void Promise.all([
       load(1),
       fetch("/api/admin/matterhorn/categories", { cache: "no-store" })
-        .then(response => response.json())
-        .then(payload => setCategories(payload.categories || [])),
+        .then(readApiResponse)
+        .then(payload => setCategories(payload.categories || []))
+        .catch(() => setCategories([])),
     ]);
   }, []);
   useEffect(() => { if (categories.length) void load(1); }, [categoryId]);
@@ -62,8 +78,7 @@ export default function MatterhornImport() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: selected, shipping, profit }),
       });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "Importi dështoi.");
+      const payload = await readApiResponse(response);
       const failures = (payload.results || []).filter((result: { status: string }) => result.status === "failed");
       setMessage(`${payload.imported} produkte u importuan te Clozer Shop.${failures.length ? ` ${failures.length} dështuan — provo përsëri.` : ""}`);
       setItems(current => current.map(item => selected.includes(item.id) && !failures.some((failure: { id: string }) => failure.id === item.id) ? { ...item, imported: true } : item));
