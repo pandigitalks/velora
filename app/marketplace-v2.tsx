@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import Link from "next/link";
+import NextLink from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -53,7 +53,7 @@ import {
   WandSparkles,
   X,
 } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ComponentProps, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "../lib/supabase/client";
 import {
   createListing,
@@ -69,7 +69,11 @@ import {
   departments,
   findCategory,
 } from "../lib/velora/categories";
-import { canonicalPath } from "../lib/routes";
+import { albanianPath, canonicalPath } from "../lib/routes";
+
+function Link({ href, ...props }: ComponentProps<typeof NextLink>) {
+  return <NextLink href={typeof href === "string" ? albanianPath(href) : href} {...props} />;
+}
 
 type ProductId = string | number;
 
@@ -1524,6 +1528,33 @@ function AuthModal({
   );
 }
 
+const megaMenuVisuals: Record<string, { image: string; eyebrow: string; title: string; text: string }> = {
+  women: {
+    image: "https://images.pexels.com/photos/13787836/pexels-photo-13787836.jpeg?cs=tinysrgb&dpr=1&w=1000",
+    eyebrow: "THE WOMEN'S EDIT",
+    title: "Forma që flasin.",
+    text: "Pjesë të zgjedhura për çdo moment.",
+  },
+  men: {
+    image: "https://images.pexels.com/photos/6616649/pexels-photo-6616649.jpeg?cs=tinysrgb&dpr=1&w=1000",
+    eyebrow: "THE MEN'S EDIT",
+    title: "Stil me karakter.",
+    text: "Klasike moderne, të zgjedhura mirë.",
+  },
+  kids: {
+    image: "https://images.pexels.com/photos/6349542/pexels-photo-6349542.jpeg?auto=compress&cs=tinysrgb&w=1000",
+    eyebrow: "MINI EDIT",
+    title: "Të vegjlit, me stil.",
+    text: "Për aventura të vogla dhe të mëdha.",
+  },
+  beauty: {
+    image: "https://images.pexels.com/photos/16185701/pexels-photo-16185701/free-photo-of-cosmetics-on-a-table.jpeg?cs=tinysrgb&dpr=1&w=1000",
+    eyebrow: "BEAUTY EDIT",
+    title: "Rituali yt i bukurisë.",
+    text: "Parfume, kujdes dhe detaje që mbeten.",
+  },
+};
+
 function AppHeader({
   cartCount,
   noteCount,
@@ -1878,21 +1909,32 @@ function AppHeader({
                 {department.nameSq}
               </Link>
               <div className="v2-megamenu">
-                {department.children?.map((group) => (
-                  <section key={group.slug}>
-                    <Link href={`/explore?department=${department.slug}&group=${group.slug}`}>
-                      {group.nameSq}
-                    </Link>
-                    {group.children?.map((subcategory) => (
-                      <Link
-                        key={subcategory.slug}
-                        href={`/explore?department=${department.slug}&category=${subcategory.slug}`}
-                      >
-                        {subcategory.nameSq}
+                <Link className="v2-mega-feature" href={`/explore?department=${department.slug}`}>
+                  <img src={megaMenuVisuals[department.slug]?.image} alt="" />
+                  <span>
+                    <small>{megaMenuVisuals[department.slug]?.eyebrow}</small>
+                    <b>{megaMenuVisuals[department.slug]?.title}</b>
+                    <em>{megaMenuVisuals[department.slug]?.text}</em>
+                    <strong>Shiko të gjitha <ArrowRight /></strong>
+                  </span>
+                </Link>
+                <div className="v2-mega-groups">
+                  {department.children?.map((group) => (
+                    <section key={group.slug}>
+                      <Link href={`/explore?department=${department.slug}&group=${group.slug}`}>
+                        {group.nameSq}
                       </Link>
-                    ))}
-                  </section>
-                ))}
+                      {group.children?.map((subcategory) => (
+                        <Link
+                          key={subcategory.slug}
+                          href={`/explore?department=${department.slug}&category=${subcategory.slug}`}
+                        >
+                          {subcategory.nameSq}
+                        </Link>
+                      ))}
+                    </section>
+                  ))}
+                </div>
               </div>
             </div>
           ))}
